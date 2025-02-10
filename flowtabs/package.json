@@ -1,0 +1,88 @@
+{
+  "name": "flowtabs",
+  "displayName": "FlowTabs",
+  "description": "Window and Tab Management Tool",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.97.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "tabSync.activateTab",
+        "title": "Activate Tab"
+      },
+      {
+        "command": "tabSync.addToFavorites",
+        "title": "Ajouter aux favoris"
+      },
+      {
+        "command": "tabSync.removeFromFavorites",
+        "title": "Supprimer des favoris"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "flowtabs",
+          "title": "FlowTabs",
+          "icon": "assets/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "flowtabs": [
+        {
+          "id": "tabSyncView",
+          "name": "Tabs"
+        },
+        {
+          "id": "favoritesView",
+          "name": "Favorites"
+        }
+      ]
+    },
+    "menus": {
+      "view/item/context": [
+        {
+          "command": "tabSync.addToFavorites",
+          "when": "view == tabSyncView",
+          "group": "navigation"
+        },
+        {
+          "command": "tabSync.removeFromFavorites",
+          "when": "view == favoritesView",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "20.x",
+    "@types/vscode": "^1.97.0",
+    "@types/ws": "^8.5.14",
+    "@typescript-eslint/eslint-plugin": "^8.22.0",
+    "@typescript-eslint/parser": "^8.22.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.1",
+    "eslint": "^9.19.0",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
