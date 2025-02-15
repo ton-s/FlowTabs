@@ -12,17 +12,26 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "FlowTabs",
+      "properties": {
+      }
+    },
     "commands": [
       {
-        "command": "tabSync.activateTab",
-        "title": "Activate Tab"
+        "command": "flowtabs.search",
+        "title": "Search",
+        "icon": {
+            "light": "assets/search.svg",
+            "dark": "assets/search-dark.svg"
+          }
       },
       {
-        "command": "tabSync.addToFavorites",
+        "command": "flowtabs.addToFavorites",
         "title": "Ajouter aux favoris"
       },
       {
-        "command": "tabSync.removeFromFavorites",
+        "command": "flowtabs.removeFromFavorites",
         "title": "Supprimer des favoris"
       }
     ],
@@ -50,17 +59,30 @@
     "menus": {
       "view/item/context": [
         {
-          "command": "tabSync.addToFavorites",
+          "command": "flowtabs.addToFavorites",
           "when": "view == tabSyncView",
           "group": "navigation"
         },
         {
-          "command": "tabSync.removeFromFavorites",
+          "command": "flowtabs.removeFromFavorites",
           "when": "view == favoritesView",
           "group": "navigation"
         }
+      ],
+      "view/title": [
+        {
+          "command": "flowtabs.search",
+          "when": "view == tabSyncView",
+          "group": "navigation"
+        }
       ]
-    }
+    },
+    "keybindings": [
+      {
+        "command": "flowtabs.search",
+        "key": "ctrl+shift+s"
+      }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

@@ -2,8 +2,7 @@ class WebSocketManager {
     constructor() {
         this.ws = null;
         this.WS_URL = "ws://localhost:5000";
-        this.RECONNECT_INTERVAL = 3000;
-        this.tabManager = null; // Sera défini plus tard
+        this.RECONNECT_INTERVAL = 5000;
         this.connect();
     }
 
@@ -12,12 +11,12 @@ class WebSocketManager {
     }
 
     connect() {
-        console.log("🔄 Tentative de connexion à WebSocket...");
-
+        console.log("🔄 Attempting to connect to WebSocket...");
+        
         this.ws = new WebSocket(this.WS_URL);
 
         this.ws.onopen = () => {
-            console.log("✅ Connexion WebSocket établie !");
+            console.log("✅ WebSocket connection established!");
             if (this.tabManager) {
                 this.tabManager.sendTabsToVSCode();
             }
@@ -26,29 +25,35 @@ class WebSocketManager {
         this.ws.onmessage = (message) => {
             try {
                 const data = JSON.parse(message.data);
-                if (data.action === "activateTab" && this.tabManager) {
-                    this.tabManager.activateTab(data.url);
-                    console.log("📥 Activation de l'onglet :", data.url);
+                if (data.action === "activateTab") {
+                    this.tabManager.activateTab(data.id);
+                    console.log("📥 Activating tab:", data.id);
+                }
+
+                if (data.action === "search") {
+                    chrome.tabs.create({
+                        url: data.url
+                    });
                 }
             } catch (error) {
-                console.error("❌ Erreur lors de la réception du message :", error);
+                console.error("❌ Error receiving message:", error);
             }
         };
 
         this.ws.onerror = (error) => {
-            console.error("❌ Erreur WebSocket :", error);
+            console.error("❌ WebSocket error:", error);
             this.reconnect();
         };
 
         this.ws.onclose = () => {
-            console.warn("⚠️ Connexion WebSocket fermée, tentative de reconnexion...");
+            console.warn("⚠️ WebSocket connection closed, attempting to reconnect...");
             this.reconnect();
         };
     }
 
     reconnect() {
         setTimeout(() => {
-            console.log("🔄 Reconnexion au WebSocket...");
+            console.log("🔄 Reconnecting to WebSocket...");
             this.connect();
         }, this.RECONNECT_INTERVAL);
     }
@@ -56,16 +61,16 @@ class WebSocketManager {
     send(data) {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             this.ws.send(JSON.stringify(data));
-            console.log("📤 Données envoyées :", data);
+            console.log("📤 Data sent:", data);
         } else {
-            console.warn("⚠️ WebSocket non connecté. Tentative de réenvoi plus tard...");
+            console.warn("⚠️ WebSocket not connected. Will retry sending later...");
         }
     }
 }
 
 class TabManager {
     constructor(webSocketManager) {
-        this.tabHistory = {}; // Stocke la dernière consultation des onglets
+        this.tabHistory = {}; // Stores the last accessed time of tabs
         this.webSocketManager = webSocketManager;
         this.listenToTabEvents();
     }
@@ -91,18 +96,20 @@ class TabManager {
 
     async sendTabsToVSCode() {
         const tabs = await chrome.tabs.query({});
+        console.log(tabs);
 
-        // Mise à jour des timestamps pour les nouveaux onglets
+        // Update timestamps for new tabs
         tabs.forEach(tab => {
             if (!this.tabHistory[tab.id]) {
                 this.updateTabHistory(tab.id);
             }
         });
 
-        // Trier les onglets par dernière consultation
+        // Sort tabs by last accessed time
         tabs.sort((a, b) => (this.tabHistory[b.id]?.lastAccessed || 0) - (this.tabHistory[a.id]?.lastAccessed || 0));
 
         const tabInfo = tabs.map(tab => ({
+            id: tab.id,
             title: tab.title,
             url: tab.url,
             icon: tab.favIconUrl,
@@ -112,18 +119,18 @@ class TabManager {
         this.webSocketManager.send({ tabs: tabInfo });
     }
 
-    activateTab(tabUrl) {
-        chrome.tabs.query({ url: tabUrl }, (tabs) => {
-            if (tabs.length > 0) {
-                chrome.tabs.update(tabs[0].id, { active: true });
-                this.updateTabHistory(tabs[0].id);
+    activateTab(tabId) {
+        chrome.tabs.get(tabId, (tab) => {
+            if (tab) {
+                chrome.tabs.update(tab.id, { active: true });
+                this.updateTabHistory(tab.id);
                 this.sendTabsToVSCode();
             }
         });
     }
 }
 
-// ✅ Initialisation propre des objets sans dépendance circulaire
+// Initialization
 const webSocketManager = new WebSocketManager();
 const tabManager = new TabManager(webSocketManager);
 webSocketManager.setTabManager(tabManager);

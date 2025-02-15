@@ -2,127 +2,199 @@ import * as vscode from 'vscode';
 import * as WebSocket from 'ws';
 import * as path from 'path';
 import { exec } from 'child_process';
+import { promisify } from 'util';
 
-// Interface représentant un onglet
+// Interface representing a tab
 interface Tab {
+    id: number;
     title: string;
     url: string;
     icon: string;
-    favorite?: boolean;
 }
 
-// Fournisseur de données pour le TreeView des onglets
+// Data provider for the tab TreeView
 class TabTreeDataProvider implements vscode.TreeDataProvider<Tab> {
     private readonly _onDidChangeTreeData = new vscode.EventEmitter<Tab | undefined>();
     readonly onDidChangeTreeData: vscode.Event<Tab | undefined> = this._onDidChangeTreeData.event;
 
-    private tabs: Tab[] = []; // Liste des onglets
+    private tabs: Tab[] = [];
 
-    constructor() {}
-
-    // Retourne l'élément de l'arbre (TreeItem) pour un onglet
+    /**
+     * Returns the tree item for a given tab.
+     * @param element - The tab element.
+     * @returns The TreeItem representation of the tab.
+     */
     getTreeItem(element: Tab): vscode.TreeItem {
         const treeItem = new vscode.TreeItem(element.title, vscode.TreeItemCollapsibleState.None);
-
-        // Si l'onglet a une icône, l'ajouter à l'élément, sinon utiliser une icône par défaut
         treeItem.iconPath = element.icon ? vscode.Uri.parse(element.icon) : new vscode.ThemeIcon('globe');
         return treeItem;
     }
 
-    // Retourne les enfants de l'élément (ici, les onglets)
+    /**
+     * Returns the children of a tab element (if any).
+     * @param element - The tab element.
+     * @returns A promise resolving to an array of tabs, or an empty array if no element is selected.
+     */
     getChildren(element?: Tab): Thenable<Tab[]> {
-        // Si un élément est sélectionné, il n'y a pas d'enfants
         if (element) {
-            return Promise.resolve([]);
+            return Promise.resolve([]); // No children for a selected tab
         }
-        
-        // Filtrer les onglets, excluant ceux qui commencent par "chrome://"
-        const filteredTabs = this.tabs.filter(tab => !tab.url.startsWith('chrome://'));
-        return Promise.resolve(filteredTabs);
+        // Return all tabs excluding those starting with "chrome://"
+        return Promise.resolve(this.tabs.filter(tab => !tab.url.startsWith('chrome://')));
     }
 
-    // Met à jour la liste des onglets dans le TreeView
+    /**
+     * Updates the list of tabs in the TreeView.
+     * @param tabs - The new list of tabs.
+     */
     updateTabs(tabs: Tab[]): void {
         this.tabs = tabs;
-        this._onDidChangeTreeData.fire(undefined); // Notifie les changements
+        this._onDidChangeTreeData.fire(undefined); // Notify that the tree data has changed
     }
 }
 
-// Fonction pour activer l'onglet dans le navigateur via WebSocket
-function activateTabInBrowser(tab: Tab, wsClient: WebSocket | null): void {
+// Function to send a WebSocket message
+/**
+ * Sends a WebSocket message if the client is connected and ready.
+ * @param wsClient - The WebSocket client.
+ * @param action - The action to be sent.
+ * @param payload - The payload data for the action.
+ */
+async function sendWebSocketMessage(wsClient: WebSocket | null, action: string, payload: object): Promise<void> {
     if (wsClient && wsClient.readyState === WebSocket.OPEN) {
-        const nircmdPath = path.join(__dirname, '..', 'resources', 'nircmd.exe');
-        exec(`"${nircmdPath}" win activate process chrome.exe`, (err) => {
-            if (err) {
-                console.error('Erreur lors de l\'activation de Chrome:', err);
-            }
-        });
-
-        // Envoyer l'URL de l'onglet via WebSocket
-        wsClient.send(JSON.stringify({ action: 'activateTab', url: tab.url }));
+        wsClient.send(JSON.stringify({ action, ...payload }));
     }
 }
 
-// Fonction pour gérer la sélection d'un onglet dans une vue
+// Activate Chrome before sending a WebSocket message
+/**
+ * Activates Chrome using an external tool (nircmd.exe) and sends a WebSocket message.
+ * @param wsClient - The WebSocket client.
+ * @param action - The action to be sent.
+ * @param payload - The payload data for the action.
+ */
+async function activateChromeAndSend(wsClient: WebSocket | null, action: string, payload: object): Promise<void> {
+    const nircmdPath = path.join(__dirname, '..', 'resources', 'nircmd.exe');
+    try {
+        // Activates Chrome using the nircmd tool
+        await promisify(exec)(`"${nircmdPath}" win activate process chrome.exe`);
+        // Sends the WebSocket message after activation
+        await sendWebSocketMessage(wsClient, action, payload);
+    } catch (error) {
+        console.error('❌ Error activating Chrome:', error);
+    }
+}
+
+// Handle tab selection
+/**
+ * Handles the event when a tab is selected from the TreeView.
+ * @param e - The selection change event.
+ * @param wsClient - The WebSocket client.
+ */
 function handleTabSelection(e: vscode.TreeViewSelectionChangeEvent<Tab>, wsClient: WebSocket | null): void {
     if (e.selection.length > 0) {
-        const selectedTab = e.selection[0];
-        console.log('Onglet sélectionné:', selectedTab);
-        activateTabInBrowser(selectedTab, wsClient); // Appel à la fonction qui gère l'activation de l'onglet
+        // Send the 'activateTab' message when a tab is selected
+        activateChromeAndSend(wsClient, 'activateTab', { id: e.selection[0].id });
     }
 }
 
+// Check if Chrome is open
+/**
+ * Checks whether Chrome is currently running.
+ * @returns A promise that resolves to true if Chrome is open, false otherwise.
+ */
+async function isChromeOpen(): Promise<boolean> {
+    try {
+        const { stdout } = await promisify(exec)('tasklist /FI "IMAGENAME eq chrome.exe"');
+        return stdout.includes('chrome.exe');
+    } catch (error) {
+        console.error('Error checking Chrome status:', error);
+        return false;
+    }
+}
 
-// Fonction activée lors de l'activation de l'extension
+// Open Chrome with a URL
+/**
+ * Opens Chrome with the provided URL if Chrome is not already running.
+ * @param url - The URL to be opened in Chrome.
+ */
+async function openChrome(url: string): Promise<void> {
+    try {
+        await promisify(exec)(`start chrome "${url}"`);
+    } catch (error) {
+        console.error('❌ Error opening Chrome:', error);
+    }
+}
+
+// Extension activation function
+/**
+ * The function that is triggered when the extension is activated.
+ * It initializes the WebSocket server and listens for incoming connections.
+ * It also registers the search command.
+ * @param context - The VS Code extension context.
+ */
 export function activate(context: vscode.ExtensionContext): void {
     const wss = new WebSocket.Server({ port: 5000 });
     let wsClient: WebSocket | null = null;
 
-    // Créer le fournisseur de données pour le TreeView
     const tabTreeDataProvider = new TabTreeDataProvider();
-
-    // Enregistrer les vues du TreeView dans le panneau latéral
-    const tabFavoritesView = vscode.window.createTreeView('favorites', {
-        treeDataProvider: tabTreeDataProvider
-    });
-
     const tabView = vscode.window.createTreeView('tabSyncView', {
         treeDataProvider: tabTreeDataProvider
     });
 
-    // Gestion des connexions WebSocket
+    // WebSocket connection handling
     wss.on('connection', (ws: WebSocket) => {
-        console.log('✅ Client connecté');
+        console.log('✅ Client connected');
+        wsClient = ws;
 
-        ws.on('message', (message: string) => {
-            wsClient = ws;
+        // Handle incoming messages
+        ws.on('message', async (message: string) => {
             try {
                 const data = JSON.parse(message.toString()) as { tabs: Tab[] };
-                // Mettre à jour les onglets dans le TreeView
                 tabTreeDataProvider.updateTabs(data.tabs);
             } catch (error) {
-                console.error('❌ Erreur lors de la réception des données :', error);
+                console.error('❌ Error receiving data:', error);
             }
         });
 
+        // Handle disconnection
         ws.on('close', () => {
-            console.log('❌ Client déconnecté');
+            console.log('❌ Client disconnected');
             wsClient = null;
         });
     });
 
-     // Lorsqu'un onglet est sélectionné dans la vue "tabSyncView"
-     tabView.onDidChangeSelection((e) => {
-        handleTabSelection(e, wsClient); // Appel à la fonction qui gère la sélection
-    });
-
-    tabFavoritesView.onDidChangeSelection((e) => {
+    // Handle tab selection change
+    tabView.onDidChangeSelection((e) => {
         handleTabSelection(e, wsClient);
     });
 
+    // Register the search command
+    const searchCommand = vscode.commands.registerCommand('flowtabs.search', async () => {
+        const query = await vscode.window.showInputBox({
+            prompt: "Enter a search",
+            placeHolder: "Enter your search here..."
+        });
+
+        if (query) {
+            const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+
+            if (await isChromeOpen()) {
+                activateChromeAndSend(wsClient, 'search', { url: searchUrl });
+            } else {
+                openChrome(searchUrl);
+            }
+        }
+    });
+
+    context.subscriptions.push(searchCommand);
 }
 
-// Fonction appelée lors de la désactivation de l'extension
+// Extension deactivation function
+/**
+ * The function that is triggered when the extension is deactivated.
+ * It logs a message indicating that the WebSocket extension has stopped.
+ */
 export function deactivate(): void {
-    console.log('🛑 Extension WebSocket arrêtée.');
+    console.log('🛑 WebSocket extension stopped.');
 }
