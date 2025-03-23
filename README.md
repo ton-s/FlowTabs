@@ -2,7 +2,7 @@
 
 ## 📌 Introduction
 
-FlowTabs est **un projet réalisé dans le cadre d'un mémoire à l'Université de Namur**. Ce projet est une extension VS Code permettant de synchroniser et gérer les onglets/fenêtres du navigateur et du bureau directement depuis l’éditeur. Cette solution est idéale pour les développeurs souhaitant naviguer rapidement entre leurs ressources et leur environnement de travail.
+FlowTabs est **un outil réalisé dans le cadre d'un mémoire à l'Université de Namur**. Cet outil est une extension VS Code permettant de synchroniser et gérer les onglets/fenêtres du navigateur et du bureau directement depuis l’éditeur. Cette solution est idéale pour les développeurs souhaitant naviguer rapidement entre leurs ressources et leur environnement de travail.
 
 ## 🚀 Fonctionnalités
 
@@ -15,9 +15,9 @@ TODO
 - Google Chrome
 - Node.js
 
-## 🛠 Développement
+## 🔨 Développement
 
-### 🏗 Structure du projet
+### 🧱 Structure du projet
 - 📁 `flowtabs/` – Code source de l’extension VS Code
 - 📁 `extension-chrome/` – Code source de l’extension Chrome
 
@@ -29,7 +29,7 @@ TODO
 $ npm install
 ```
 
-#### Installation de l'extension en mode développement
+#### Lancement de l'extension en mode développement
 
 1. Ouvrez le projet dans VS Code
 2. Appuyez sur `F5` pour lancer une nouvelle fenêtre VS Code avec l’extension activée
@@ -48,10 +48,10 @@ $ npm install
 1. Ouvrir le navigateur et naviguer sur des onglets
 2. Dans VS Code, ouvrez la vue **FlowTabs** pour voir les onglets
 
-### 🛠 Débogage
+### 🔍 Débogage
 
 - **VS Code** : utilisez la console de débogage (`F5`) pour voir les logs
-- **Chrome** : ouvrez `chrome://extensions/` > "Inspecter les vues" pour voir les logs de l’extension
+- **Chrome** : ouvrez `chrome://extensions/` > "Inspecter les vues" via le service worker pour voir les logs de l’extension
 
 
 ## 📦 Installation

@@ -77,21 +77,54 @@ class TabManager {
 
     listenToTabEvents() {
         chrome.tabs.onActivated.addListener((activeInfo) => {
-            this.updateTabHistory(activeInfo.tabId);
+            this.updateTabHistoryLastAccessed(activeInfo.tabId);
+            this.updateFrequency(activeInfo.tabId);
             this.sendTabsToVSCode();
         });
 
-        chrome.tabs.onUpdated.addListener(() => this.sendTabsToVSCode());
+        chrome.tabs.onUpdated.addListener((tabId) => {
+            this.updateTabHistoryLastAccessed(tabId);
+            this.sendTabsToVSCode();
+
+            this.resetFrequency(tabId);
+        });
+
         chrome.tabs.onRemoved.addListener((tabId) => {
             delete this.tabHistory[tabId];
             this.sendTabsToVSCode();
         });
 
-        chrome.tabs.onCreated.addListener(() => this.sendTabsToVSCode());
+        chrome.tabs.onCreated.addListener(() => {
+            this.sendTabsToVSCode();
+        });
     }
 
-    updateTabHistory(tabId) {
-        this.tabHistory[tabId] = { lastAccessed: Date.now() };
+    updateTabHistoryLastAccessed(tabId) {
+        const now = Date.now();
+
+        if (!this.tabHistory[tabId]) {
+            this.tabHistory[tabId] = { lastAccessed: now};
+        }
+        this.tabHistory[tabId].lastAccessed = now;
+
+    }
+
+    updateFrequency(tabId) {
+        if(!this.tabHistory[tabId]) {
+            this.tabHistory[tabId] = { frequency: 0 };
+        } else {
+            this.tabHistory[tabId].frequency = this.tabHistory[tabId].frequency + 1 || 1;
+        }
+        
+
+        console.log("History : ", this.tabHistory);
+    }
+
+    
+    resetFrequency(tabId) {
+        if (this.tabHistory[tabId]) {
+            this.tabHistory[tabId].frequency = 1;
+        }
     }
 
     async sendTabsToVSCode() {
@@ -101,20 +134,72 @@ class TabManager {
         // Update timestamps for new tabs
         tabs.forEach(tab => {
             if (!this.tabHistory[tab.id]) {
-                this.updateTabHistory(tab.id);
+                this.updateTabHistoryLastAccessed(tab.id);
+                this.updateFrequency(tab.id);
             }
         });
 
-        // Sort tabs by last accessed time
-        tabs.sort((a, b) => (this.tabHistory[b.id]?.lastAccessed || 0) - (this.tabHistory[a.id]?.lastAccessed || 0));
+
+        // // Calculate frequency of each tab
+        // const sum_frequency = Object.values(this.tabHistory).reduce((acc, curr) => acc + (curr.frequency|| 0), 0);
+        // console.log("Sum Frequency : ", sum_frequency);
+        // const score_frequency = {};
+        // tabs.forEach(tab => {
+        //     if (this.tabHistory[tab.id]) {
+        //         score_frequency[tab.id] = this.tabHistory[tab.id].frequency / sum_frequency || 0;
+        //     }
+        // }
+        // );
+    
+        // console.log(score_frequency);
+
+        // // calculate relevance of each tab
+        // const score_relevance = {};
+        // const lambda = 0.07;
+        // tabs.forEach(tab => {
+        //     if (this.tabHistory[tab.id]) {
+        //         const elaspesedTime = (Date.now() - this.tabHistory[tab.id].lastAccessed) / 60000;
+        //         console.log("Elapsed Time : ", elaspesedTime);
+        //         score_relevance[tab.id] = Math.exp(-lambda * elaspesedTime) || 0;
+        //     }
+        // }
+        // );
+        // console.log("Relevance : ", score_relevance);
+
+        // // calculate final score
+        // const score = {};
+        // const alpha = 0.3;
+        // const beta = 0.7;
+        // tabs.forEach(tab => {
+        //     if (this.tabHistory[tab.id]) {
+        //         score[tab.id] = score_frequency[tab.id] * alpha + score_relevance[tab.id] * beta;
+        //     }
+        // }
+        // );
+
+        // console.log("Score : ", score);
+
+
+
+        // // Sort tabs by last accessed time
+        // //tabs.sort((a, b) => (this.tabHistory[b.id]?.lastAccessed || 0) - (this.tabHistory[a.id]?.lastAccessed || 0));
+        // tabs.sort((a, b) => score[b.id] - score[a.id]);
 
         const tabInfo = tabs.map(tab => ({
             id: tab.id,
             title: tab.title,
             url: tab.url,
             icon: tab.favIconUrl,
-            lastAccessed: this.tabHistory[tab.id]?.lastAccessed || 0
+            lastAccessed: this.tabHistory[tab.id].lastAccessed,
+            frequency: this.tabHistory[tab.id].frequency
         }));
+        
+        // // Split tabs into relevant and irrelevant tabs
+        // //const tabInfoSplit = tabInfo.findIndex(tab => (Date.now() - tab.lastAccessed) > 100000);
+        // const tabInfoSplit = tabInfo.findIndex(tab => score[tab.id] < 0.5);
+
+        // const revelanteTabs = tabInfoSplit === -1 ? tabInfo : tabInfo.slice(0, tabInfoSplit);
+        // const allTabs = tabInfoSplit === -1 ? [] : tabInfo.slice(tabInfoSplit);
 
         this.webSocketManager.send({ tabs: tabInfo });
     }
@@ -123,7 +208,8 @@ class TabManager {
         chrome.tabs.get(tabId, (tab) => {
             if (tab) {
                 chrome.tabs.update(tab.id, { active: true });
-                this.updateTabHistory(tab.id);
+                this.updateTabHistoryLastAccessed(tab.id);
+                this.updateFrequency(tab.id);
                 this.sendTabsToVSCode();
             }
         });
@@ -134,3 +220,12 @@ class TabManager {
 const webSocketManager = new WebSocketManager();
 const tabManager = new TabManager(webSocketManager);
 webSocketManager.setTabManager(tabManager);
+
+// Keep the extension alive (best practice ???)
+chrome.alarms.create("keepAlive", { periodInMinutes: 0.4 });
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+    if (alarm.name === "keepAlive") {
+        tabManager.sendTabsToVSCode();
+    }
+});

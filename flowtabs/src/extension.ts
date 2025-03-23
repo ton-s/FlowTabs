@@ -3,16 +3,14 @@ import * as WebSocket from 'ws';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
+import * as robotjs from 'robotjs';
+
+import TabScoreCalculator, { Tab } from './utils';
+
 
 const WEBSOCKET_PORT = 5000;
 
-// Interface representing a tab
-interface Tab {
-    id: number;
-    title: string;
-    url: string;
-    icon: string;
-}
+const tabScoreCalculator = new TabScoreCalculator([]);
 
 // Abstract class for browser compatibility
 abstract class BrowserManager {
@@ -64,13 +62,20 @@ class ChromeManager extends BrowserManager {
 
 // Data provider for the tab TreeView
 class TabTreeDataProvider implements vscode.TreeDataProvider<Tab> {
-    private readonly _onDidChangeTreeData = new vscode.EventEmitter<Tab | undefined>();
+    protected readonly _onDidChangeTreeData = new vscode.EventEmitter<Tab | undefined>();
     readonly onDidChangeTreeData: vscode.Event<Tab | undefined> = this._onDidChangeTreeData.event;
-    private tabs: Tab[] = [];
+    protected tabs: Tab[] = [];
+
+    getTabs(): Tab[] {
+        return this.tabs;
+    }
 
     getTreeItem(element: Tab): vscode.TreeItem {
         const treeItem = new vscode.TreeItem(element.title, vscode.TreeItemCollapsibleState.None);
         treeItem.iconPath = element.icon ? vscode.Uri.parse(element.icon) : new vscode.ThemeIcon('globe');
+
+        treeItem.contextValue = tabScoreCalculator.checkFavoriteTab(element) ? 'favoriteTab' : 'tab';
+
         return treeItem;
     }
     
@@ -82,7 +87,14 @@ class TabTreeDataProvider implements vscode.TreeDataProvider<Tab> {
         this.tabs = tabs;
         this._onDidChangeTreeData.fire(undefined);
     }
+
+    resetTabs(): void {
+        this.tabs = [];
+        this._onDidChangeTreeData.fire(undefined);
+    }
+    
 }
+
 
 // Main extension activation function
 export function activate(context: vscode.ExtensionContext): void {
@@ -90,7 +102,17 @@ export function activate(context: vscode.ExtensionContext): void {
     let wsClient: WebSocket | null = null;
     const browserManager = new ChromeManager();
     const tabTreeDataProvider = new TabTreeDataProvider();
-    const tabView = vscode.window.createTreeView('tabSyncView', { treeDataProvider: tabTreeDataProvider });
+    const revelanteTabTreeDataProvider = new TabTreeDataProvider();
+
+    const windows = robotjs.getWindows();
+    console.log(windows);
+
+    const tabView = vscode.window.createTreeView('tabSyncView', { 
+        treeDataProvider: tabTreeDataProvider 
+    });
+    const revelanteTabView = vscode.window.createTreeView('relevanteTabSyncView', { 
+        treeDataProvider: revelanteTabTreeDataProvider 
+    });
 
     wss.on('connection', (ws: WebSocket) => {
         console.log('✅ Client connected');
@@ -98,8 +120,11 @@ export function activate(context: vscode.ExtensionContext): void {
 
         ws.on('message', async (message: string) => {
             try {
-                const data = JSON.parse(message.toString()) as { tabs: Tab[] };
-                tabTreeDataProvider.updateTabs(data.tabs);
+                const data = JSON.parse(message.toString()) as { tabs: Tab[]};
+                console.log(data);
+                tabScoreCalculator.updateTabs(data.tabs);
+                syncTabs(tabTreeDataProvider, revelanteTabTreeDataProvider);
+
             } catch (error) {
                 console.error('❌ Error receiving data:', error);
             }
@@ -107,12 +132,20 @@ export function activate(context: vscode.ExtensionContext): void {
 
         ws.on('close', () => {
             console.log('❌ Client disconnected');
+            tabTreeDataProvider.resetTabs();
+            revelanteTabTreeDataProvider.resetTabs();
             wsClient = null;
-            tabTreeDataProvider.updateTabs([]);
         });
     });
 
     tabView.onDidChangeSelection((e) => {
+        if (e.selection.length > 0) {
+            browserManager.activateBrowser()
+                .then(() => browserManager.sendMessage(wsClient, 'activateTab', { id: e.selection[0].id }));
+        }
+    });
+
+    revelanteTabView.onDidChangeSelection((e) => {
         if (e.selection.length > 0) {
             browserManager.activateBrowser()
                 .then(() => browserManager.sendMessage(wsClient, 'activateTab', { id: e.selection[0].id }));
@@ -136,6 +169,28 @@ export function activate(context: vscode.ExtensionContext): void {
     });
     
     context.subscriptions.push(searchCommand);
+
+
+    const addFavoriteCommand = vscode.commands.registerCommand('flowtabs.addFavorite', async (e) => {
+        tabScoreCalculator.addFavoriteTab(e);
+        syncTabs(tabTreeDataProvider, revelanteTabTreeDataProvider);
+    });
+
+    const removeFavoriteCommand = vscode.commands.registerCommand('flowtabs.removeFavorite', async (e) => {
+        tabScoreCalculator.removeFavoriteTab(e);
+        syncTabs(tabTreeDataProvider, revelanteTabTreeDataProvider);
+    });
+
+
+    context.subscriptions.push(addFavoriteCommand);
+    context.subscriptions.push(removeFavoriteCommand);
+
+}
+
+function syncTabs(tabTreeDataProvider: TabTreeDataProvider, revelanteTabTreeDataProvider: TabTreeDataProvider): void {
+    const {allTabs, relevantTabs } = tabScoreCalculator.getScore();
+    tabTreeDataProvider.updateTabs(allTabs);
+    revelanteTabTreeDataProvider.updateTabs(relevantTabs);
 }
 
 export function deactivate(): void {

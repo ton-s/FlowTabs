@@ -14,25 +14,32 @@
   "contributes": {
     "configuration": {
       "title": "FlowTabs",
-      "properties": {
-      }
+      "properties": {}
     },
     "commands": [
       {
         "command": "flowtabs.search",
-        "title": "Search",
+        "title": "Run a search",
         "icon": {
-            "light": "assets/search.svg",
-            "dark": "assets/search-dark.svg"
-          }
+          "light": "assets/search.svg",
+          "dark": "assets/search-dark.svg"
+        }
       },
       {
-        "command": "flowtabs.addToFavorites",
-        "title": "Ajouter aux favoris"
+        "command": "flowtabs.addFavorite",
+        "title": "Add to Favorites",
+        "icon": {
+          "light": "assets/star-empty.svg",
+          "dark": "assets/star-empty-dark.svg"
+        }
       },
       {
-        "command": "flowtabs.removeFromFavorites",
-        "title": "Supprimer des favoris"
+        "command": "flowtabs.removeFavorite",
+        "title": "Remove from Favorites",
+        "icon": {
+          "light": "assets/star-full.svg",
+          "dark": "assets/star-full-dark.svg"
+        }
       }
     ],
     "viewsContainers": {
@@ -47,33 +54,33 @@
     "views": {
       "flowtabs": [
         {
-          "id": "tabSyncView",
-          "name": "Tabs"
+          "id": "relevanteTabSyncView",
+          "name": "Relevant Tabs"
         },
         {
-          "id": "favoritesView",
-          "name": "Favorites"
+          "id": "tabSyncView",
+          "name": "All Tabs"
         }
       ]
     },
     "menus": {
-      "view/item/context": [
-        {
-          "command": "flowtabs.addToFavorites",
-          "when": "view == tabSyncView",
-          "group": "navigation"
-        },
-        {
-          "command": "flowtabs.removeFromFavorites",
-          "when": "view == favoritesView",
-          "group": "navigation"
-        }
-      ],
       "view/title": [
         {
           "command": "flowtabs.search",
           "when": "view == tabSyncView",
           "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "flowtabs.addFavorite",
+          "when": "viewItem == tab",
+          "group": "inline"
+        },
+        {
+          "command": "flowtabs.removeFavorite",
+          "when": "viewItem == favoriteTab",
+          "group": "inline"
         }
       ]
     },
