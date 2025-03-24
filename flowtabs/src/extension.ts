@@ -89,7 +89,7 @@ class TabTreeDataProvider implements vscode.TreeDataProvider<Tab> {
     }
     
     getChildren(): Thenable<Tab[]> {
-        return Promise.resolve(this.tabs.filter(tab => !tab.url.startsWith('chrome://')));
+        return Promise.resolve(this.tabs.filter(tab => !tab.url.startsWith('chrome://newtab/')));
     }
     
     updateTabs(tabs: Tab[]): void {
