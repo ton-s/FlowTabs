@@ -3,7 +3,6 @@ import * as WebSocket from 'ws';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
-import * as robotjs from 'robotjs';
 
 import TabScoreCalculator, { Tab } from './utils';
 
@@ -12,8 +11,8 @@ const WEBSOCKET_PORT = 5000;
 
 const tabScoreCalculator = new TabScoreCalculator([]);
 
-// Abstract class for browser compatibility
-abstract class BrowserManager {
+// Abstract class for OS compatibility
+abstract class OSManager {
     abstract isBrowserOpen(): Promise<boolean>;
     abstract activateBrowser(): Promise<void>;
     abstract openBrowser(url: string): Promise<void>;
@@ -29,8 +28,7 @@ abstract class BrowserManager {
     }
 }
 
-// Chrome-specific implementation
-class ChromeManager extends BrowserManager {
+class WindowsOSManager extends OSManager {
     private readonly nircmdPath = path.join(__dirname, '..', 'resources', 'nircmd.exe');
     
     async isBrowserOpen(): Promise<boolean> {
@@ -38,7 +36,7 @@ class ChromeManager extends BrowserManager {
             const { stdout } = await promisify(exec)('tasklist /FI "IMAGENAME eq chrome.exe"');
             return stdout.includes('chrome.exe');
         } catch (error) {
-            console.error('Error checking Chrome status:', error);
+            console.error('Error checking browser status:', error);
             return false;
         }
     }
@@ -55,7 +53,18 @@ class ChromeManager extends BrowserManager {
         try {
             await promisify(exec)(`start chrome "${url}"`);
         } catch (error) {
-            console.error('❌ Error opening Chrome:', error);
+            console.error('❌ Error opening browser:', error);
+        }
+    }
+}
+
+class OSFactory {
+
+    static getOSManager(): OSManager {
+        if (process.platform === 'win32') {
+            return new WindowsOSManager();
+        } else {
+            throw new Error('Unsupported OS');
         }
     }
 }
@@ -100,12 +109,9 @@ class TabTreeDataProvider implements vscode.TreeDataProvider<Tab> {
 export function activate(context: vscode.ExtensionContext): void {
     const wss = new WebSocket.Server({ port: Number(WEBSOCKET_PORT) });
     let wsClient: WebSocket | null = null;
-    const browserManager = new ChromeManager();
+    const browserManager = OSFactory.getOSManager();
     const tabTreeDataProvider = new TabTreeDataProvider();
     const revelanteTabTreeDataProvider = new TabTreeDataProvider();
-
-    const windows = robotjs.getWindows();
-    console.log(windows);
 
     const tabView = vscode.window.createTreeView('tabSyncView', { 
         treeDataProvider: tabTreeDataProvider 
@@ -113,6 +119,8 @@ export function activate(context: vscode.ExtensionContext): void {
     const revelanteTabView = vscode.window.createTreeView('relevanteTabSyncView', { 
         treeDataProvider: revelanteTabTreeDataProvider 
     });
+
+    console.log(process.platform);
 
     wss.on('connection', (ws: WebSocket) => {
         console.log('✅ Client connected');
