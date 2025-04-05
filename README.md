@@ -1,11 +1,11 @@
 # FlowTabs - Extension VS Code de gestion de fenêtres et d'onglets
 
 
-FlowTabs est **un extension VS Code réalisé dans le cadre d'un mémoire à l'Université de Namur**. Cet extension VS Code permettant de synchroniser et gérer les onglets/fenêtres du navigateur et du bureau directement depuis l’éditeur. Cette solution est idéale pour les développeurs souhaitant naviguer rapidement entre leurs ressources et leur environnement de travail.
+FlowTabs est **un extension VS Code réalisé dans le cadre de mon mémoire à l'Université de Namur**. Cet extension VS Code permettant de synchroniser et gérer les onglets/fenêtres du navigateur et du bureau directement depuis l’éditeur. Cette solution est idéale pour les développeurs souhaitant naviguer rapidement entre leurs ressources et leur environnement de travail.
 
-## 🚀 Fonctionnalités
+## 🚀 Backlog
 
-TODO
+[Lien vers le Trello](https://trello.com/invite/b/67dd8d8ebd700e3bacb774e8/ATTIcfc6b53b362bdf21068f833a0a2ea522FE7FE4F5/backlog)
 
 
 ## Pré-requis
@@ -49,7 +49,7 @@ $ npm install
 
 ### 🔍 Débogage
 
-- **VS Code** : utilisez la console de débogage (`F5`) pour voir les logs
+- **VS Code** : utilisez la console de débogage pour voir les logs
 - **Chrome** : ouvrez `chrome://extensions/` > "Inspecter les vues" via le service worker pour voir les logs de l’extension
 
 
@@ -59,19 +59,17 @@ Les instructions d’installation seront ajoutées ultérieurement pour une vers
 
 ## 👥 Contribuer
 
-1. Les contributions sont les bienvenues ! Si vous souhaitez contribuer, veuillez suivre les étapes ci-dessous :
+Les contributions sont les bienvenues ! Si vous souhaitez contribuer, veuillez suivre les étapes ci-dessous :
 
-2. Fork ce repository.
+1. Créez une branche pour votre fonctionnalité ou votre correctif.
 
-3. Créez une branche pour votre fonctionnalité ou votre correctif (git checkout -b feature/nom-de-la-fonctionnalite).
+2. Faites vos modifications.
 
-4. Faites vos modifications.
+3. Soumettez une Pull Request une fois les modifications terminées. Fournissez une description claire.
 
-5. Commitez vos changements avec un message clair (git commit -am 'Ajout de la fonctionnalité').
+4. Faites réviser votre code. Répondez aux retours et appliquez les modifications si nécessaire.
 
-6. Poussez la branche (git push origin feature/nom-de-la-fonctionnalite).
-
-7. Ouvrez une pull request
+7. Une fois la PR approuvée, fusionnez la branche avec la branche principale. Supprimez ensuite la branche pour garder le dépôt propre.
 
 ## Licence
 
