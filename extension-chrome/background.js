@@ -139,52 +139,7 @@ class TabManager {
             }
         });
 
-
-        // // Calculate frequency of each tab
-        // const sum_frequency = Object.values(this.tabHistory).reduce((acc, curr) => acc + (curr.frequency|| 0), 0);
-        // console.log("Sum Frequency : ", sum_frequency);
-        // const score_frequency = {};
-        // tabs.forEach(tab => {
-        //     if (this.tabHistory[tab.id]) {
-        //         score_frequency[tab.id] = this.tabHistory[tab.id].frequency / sum_frequency || 0;
-        //     }
-        // }
-        // );
-    
-        // console.log(score_frequency);
-
-        // // calculate relevance of each tab
-        // const score_relevance = {};
-        // const lambda = 0.07;
-        // tabs.forEach(tab => {
-        //     if (this.tabHistory[tab.id]) {
-        //         const elaspesedTime = (Date.now() - this.tabHistory[tab.id].lastAccessed) / 60000;
-        //         console.log("Elapsed Time : ", elaspesedTime);
-        //         score_relevance[tab.id] = Math.exp(-lambda * elaspesedTime) || 0;
-        //     }
-        // }
-        // );
-        // console.log("Relevance : ", score_relevance);
-
-        // // calculate final score
-        // const score = {};
-        // const alpha = 0.3;
-        // const beta = 0.7;
-        // tabs.forEach(tab => {
-        //     if (this.tabHistory[tab.id]) {
-        //         score[tab.id] = score_frequency[tab.id] * alpha + score_relevance[tab.id] * beta;
-        //     }
-        // }
-        // );
-
-        // console.log("Score : ", score);
-
-
-
-        // // Sort tabs by last accessed time
-        // //tabs.sort((a, b) => (this.tabHistory[b.id]?.lastAccessed || 0) - (this.tabHistory[a.id]?.lastAccessed || 0));
-        // tabs.sort((a, b) => score[b.id] - score[a.id]);
-
+        
         const tabInfo = tabs.map(tab => ({
             id: tab.id,
             title: tab.title,
@@ -194,13 +149,6 @@ class TabManager {
             frequency: this.tabHistory[tab.id].frequency
         }));
         
-        // // Split tabs into relevant and irrelevant tabs
-        // //const tabInfoSplit = tabInfo.findIndex(tab => (Date.now() - tab.lastAccessed) > 100000);
-        // const tabInfoSplit = tabInfo.findIndex(tab => score[tab.id] < 0.5);
-
-        // const revelanteTabs = tabInfoSplit === -1 ? tabInfo : tabInfo.slice(0, tabInfoSplit);
-        // const allTabs = tabInfoSplit === -1 ? [] : tabInfo.slice(tabInfoSplit);
-
         this.webSocketManager.send({ tabs: tabInfo });
     }
 
