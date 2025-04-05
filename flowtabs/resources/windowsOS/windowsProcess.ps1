@@ -67,11 +67,27 @@ Add-Type -TypeDefinition @"
         // Récupération du processus
         uint processId;
         GetWindowThreadProcessId(hWnd, out processId);
-        var process = Process.GetProcessById((int)processId);
+        Process process;
+
+        try
+        {
+          process = Process.GetProcessById((int)processId);
+        }
+        catch {
+          return true; // Ignore les processus qui ne sont plus actifs
+        }
 
         // Exclure les processus connus d'arrière-plan
         if (Array.Exists(excludedProcesses, element => element.Equals(process.ProcessName, StringComparison.OrdinalIgnoreCase)))
           return true;
+
+        string exePath;
+        try {
+          exePath = process.MainModule.FileName;
+        } catch {
+          return true; // Si on ne peut pas accéder au chemin, on ignore cette fenêtre
+        }
+
 
         // Ajoute uniquement les fenêtres qui passent les filtres
         var window = new Dictionary<string, string>
@@ -79,7 +95,7 @@ Add-Type -TypeDefinition @"
           { "id", hWnd.ToString() },
           { "processName", process.ProcessName },
           { "title", title.ToString() },
-          { "exePath", process.MainModule.FileName }
+          { "exePath", exePath }
         };
 
         windows.Add(window);
