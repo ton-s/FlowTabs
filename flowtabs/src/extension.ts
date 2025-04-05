@@ -1,22 +1,111 @@
 import * as vscode from 'vscode';
 import * as WebSocket from 'ws';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import * as path from 'path';
+import * as fs from 'fs';
 
-import TabScoreCalculator, { Tab } from './utils';
+import TabScoreCalculator, { Tab, Window, TabOrWindow } from './tabsSort';
+import FileSystemUtils from './utils';
 
 
 const WEBSOCKET_PORT = 5000;
 
 const tabScoreCalculator = new TabScoreCalculator([]);
 
+class WindowManager {
+    private readonly getAllWindowsScript = path.resolve(__dirname, '..', 'resources', 'windowsOS', 'windowsProcess.ps1');
+    private readonly getActiveWindowScript = path.resolve(__dirname, '..', 'resources', 'windowsOS', 'getActiveWindow.ps1');
+    private readonly getWindowIconScript = path.resolve(__dirname, '..', 'resources', 'windowsOS', 'getWindowIcon.ps1');
+    protected windows: Window[] = [];
+    private lastWindow: string = '';
+
+
+    // Méthode pour récupérer toutes les fenêtres
+    async getAllWindows(): Promise<void> {
+        const command = `powershell -ExecutionPolicy RemoteSigned -File "${this.getAllWindowsScript}"`;
+
+        const stdout = await FileSystemUtils.executeCommand(command);
+        const data = JSON.parse(stdout);
+
+        data.forEach((d: any) => {
+            if (!this.windows.some(w => w.id === d.id)) {
+                this.windows.push(d);
+            }
+        });
+
+        this.windows = this.windows.filter(currentw => {
+            const isInData = data.some((neww: any) => currentw.id === neww.id);
+            const isNotExcluded = !['code', 'chrome'].includes(currentw.processName.toLowerCase());
+            return isInData && isNotExcluded;
+        });
+
+        this.windows.forEach(w => this.getIcon({ id: w.id, exePath: w.exePath }));
+
+        console.log('All windows:', this.windows);
+    }
+
+    // Méthode pour récupérer la fenêtre active et la mettre à jour
+    async getActiveWindow(): Promise<void> {
+        const command = `powershell -ExecutionPolicy RemoteSigned -File "${this.getActiveWindowScript}"`;
+        const activeWindowTitle = await FileSystemUtils.executeCommand(command);
+        const activeWindow = this.windows.find(w => w.title === activeWindowTitle.trim());
+        if (activeWindow) {
+            activeWindow.lastAccessed = Date.now();
+        }
+        this.updateWindowsFrequency(activeWindowTitle.trim());
+    }
+
+    private updateWindowsFrequency(currentWindow: string): void {
+        const window = this.windows.find(w => w.title === currentWindow);
+
+        if (window && currentWindow !== this.lastWindow) {
+            window.frequency = window.frequency ? window.frequency + 1 : 1;
+        }
+
+        this.lastWindow = currentWindow;
+
+    }
+
+    async getIcon(window: { id: number; exePath: string }): Promise<void> {
+        const iconPath: string = path.resolve(__dirname, '..', 'assets', 'icons', `${window.id}.png`);
+        const iconsDir = path.resolve(__dirname, '..', 'assets', 'icons');
+
+
+        await FileSystemUtils.createDirectory(iconsDir);
+
+        const command = `powershell -ExecutionPolicy RemoteSigned -File "${this.getWindowIconScript}"`;
+
+        await FileSystemUtils.executeCommand(`${command} "${window.exePath}" "${iconPath}"`);
+
+
+        this.windows.find(w => w.id === window.id)!.icon = `../assets/icons/${window.id}.png`;
+
+    }
+
+    public async startUpdatingActiveWindow(tabTreeDataProvider: TabTreeDataProvider, revelanteTabTreeDataProvider: TabTreeDataProvider, interval: number = 5000): Promise<void> {
+        // Ensuite mettre à jour la fenêtre active périodiquement
+        const updateCycle = async () => {
+            await this.getAllWindows();
+            await this.getActiveWindow();
+            tabScoreCalculator.updateItems(this.windows, "windows");
+            syncTabs(tabTreeDataProvider, revelanteTabTreeDataProvider);
+
+            setTimeout(updateCycle, interval);
+        };
+
+        updateCycle();
+    }
+
+
+}
+
+
 // Abstract class for OS compatibility
 abstract class OSManager {
     abstract isBrowserOpen(): Promise<boolean>;
     abstract activateBrowser(): Promise<void>;
+    abstract activateWindow(processId: number): Promise<void>;
     abstract openBrowser(url: string): Promise<void>;
-    
+
     async sendMessage(wsClient: WebSocket | null, action: string, payload: object): Promise<void> {
         if (wsClient && wsClient.readyState === WebSocket.OPEN) {
             try {
@@ -29,32 +118,23 @@ abstract class OSManager {
 }
 
 class WindowsOSManager extends OSManager {
-    private readonly nircmdPath = path.join(__dirname, '..', 'resources', 'nircmd.exe');
-    
+    private readonly nircmdPath = path.join(__dirname, '..', 'resources', 'windowsOS', 'nircmd.exe');
+
     async isBrowserOpen(): Promise<boolean> {
-        try {
-            const { stdout } = await promisify(exec)('tasklist /FI "IMAGENAME eq chrome.exe"');
-            return stdout.includes('chrome.exe');
-        } catch (error) {
-            console.error('Error checking browser status:', error);
-            return false;
-        }
+        const stdout = await FileSystemUtils.executeCommand('tasklist /FI "IMAGENAME eq chrome.exe"');
+        return stdout.includes('chrome.exe'); 
     }
-    
+
     async activateBrowser(): Promise<void> {
-        try {
-            await promisify(exec)(`"${this.nircmdPath}" win activate process chrome.exe`);
-        } catch (error) {
-            console.error('❌ Error activating Chrome:', error);
-        }
+        await FileSystemUtils.executeCommand(`"${this.nircmdPath}" win activate process chrome.exe`);
     }
-    
+
+    async activateWindow(processId: number): Promise<void> {
+        await FileSystemUtils.executeCommand(`"${this.nircmdPath}" win activate handle ${processId}`);
+    }
+
     async openBrowser(url: string): Promise<void> {
-        try {
-            await promisify(exec)(`start chrome "${url}"`);
-        } catch (error) {
-            console.error('❌ Error opening browser:', error);
-        }
+        await FileSystemUtils.executeCommand(`start chrome "${url}"`);
     }
 }
 
@@ -70,38 +150,54 @@ class OSFactory {
 }
 
 // Data provider for the tab TreeView
-class TabTreeDataProvider implements vscode.TreeDataProvider<Tab> {
-    protected readonly _onDidChangeTreeData = new vscode.EventEmitter<Tab | undefined>();
-    readonly onDidChangeTreeData: vscode.Event<Tab | undefined> = this._onDidChangeTreeData.event;
-    protected tabs: Tab[] = [];
+class TabTreeDataProvider implements vscode.TreeDataProvider<TabOrWindow> {
+    protected readonly _onDidChangeTreeData = new vscode.EventEmitter<TabOrWindow | undefined>();
+    readonly onDidChangeTreeData: vscode.Event<TabOrWindow | undefined> = this._onDidChangeTreeData.event;
+    protected tabs: TabOrWindow[] = [];
 
-    getTabs(): Tab[] {
+    getTabs(): TabOrWindow[] {
         return this.tabs;
     }
 
-    getTreeItem(element: Tab): vscode.TreeItem {
+    getTreeItem(element: TabOrWindow): vscode.TreeItem {
         const treeItem = new vscode.TreeItem(element.title, vscode.TreeItemCollapsibleState.None);
-        treeItem.iconPath = element.icon ? vscode.Uri.parse(element.icon) : new vscode.ThemeIcon('globe');
+        if ('url' in element) {
+
+            treeItem.iconPath = element.icon ? vscode.Uri.parse(element.icon) : new vscode.ThemeIcon('globe');
+        } else {
+            treeItem.iconPath = element.icon ? vscode.Uri.joinPath(vscode.Uri.file(__dirname), element.icon) : new vscode.ThemeIcon('window');
+        }
 
         treeItem.contextValue = tabScoreCalculator.checkFavoriteTab(element) ? 'favoriteTab' : 'tab';
 
         return treeItem;
     }
-    
-    getChildren(): Thenable<Tab[]> {
-        return Promise.resolve(this.tabs.filter(tab => !tab.url.startsWith('chrome://newtab/')));
+
+    getChildren(): Thenable<TabOrWindow[]> {
+        return Promise.resolve(this.tabs.filter(tab => {
+            if ('url' in tab) {
+                return !tab.url.startsWith('chrome://newtab/');
+            } else {
+                return tab;
+            }
+        }));
     }
-    
-    updateTabs(tabs: Tab[]): void {
+
+    updateTabs(tabs: TabOrWindow[]): void {
         this.tabs = tabs;
         this._onDidChangeTreeData.fire(undefined);
     }
 
-    resetTabs(): void {
-        this.tabs = [];
+    refresh(): void {
         this._onDidChangeTreeData.fire(undefined);
     }
-    
+
+}
+
+function syncTabs(tabTreeDataProvider: TabTreeDataProvider, revelanteTabTreeDataProvider: TabTreeDataProvider): void {
+    const { allTabs, relevantTabs } = tabScoreCalculator.getScore();
+    tabTreeDataProvider.updateTabs(allTabs);
+    revelanteTabTreeDataProvider.updateTabs(relevantTabs);
 }
 
 
@@ -110,14 +206,15 @@ export function activate(context: vscode.ExtensionContext): void {
     const wss = new WebSocket.Server({ port: Number(WEBSOCKET_PORT) });
     let wsClient: WebSocket | null = null;
     const browserManager = OSFactory.getOSManager();
+    const windowManager = new WindowManager();
     const tabTreeDataProvider = new TabTreeDataProvider();
     const revelanteTabTreeDataProvider = new TabTreeDataProvider();
 
-    const tabView = vscode.window.createTreeView('tabSyncView', { 
-        treeDataProvider: tabTreeDataProvider 
+    const tabView = vscode.window.createTreeView('tabSyncView', {
+        treeDataProvider: tabTreeDataProvider
     });
-    const revelanteTabView = vscode.window.createTreeView('relevanteTabSyncView', { 
-        treeDataProvider: revelanteTabTreeDataProvider 
+    const revelanteTabView = vscode.window.createTreeView('relevanteTabSyncView', {
+        treeDataProvider: revelanteTabTreeDataProvider
     });
 
     console.log(process.platform);
@@ -128,9 +225,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
         ws.on('message', async (message: string) => {
             try {
-                const data = JSON.parse(message.toString()) as { tabs: Tab[]};
+                const data = JSON.parse(message.toString()) as { tabs: Tab[] };
                 console.log(data);
-                tabScoreCalculator.updateTabs(data.tabs);
+                tabScoreCalculator.updateItems(data.tabs, "tabs");
                 syncTabs(tabTreeDataProvider, revelanteTabTreeDataProvider);
 
             } catch (error) {
@@ -140,23 +237,34 @@ export function activate(context: vscode.ExtensionContext): void {
 
         ws.on('close', () => {
             console.log('❌ Client disconnected');
-            tabTreeDataProvider.resetTabs();
-            revelanteTabTreeDataProvider.resetTabs();
+            tabTreeDataProvider.refresh();
+            revelanteTabTreeDataProvider.refresh();
+            tabScoreCalculator.updateItems([], "tabs");
             wsClient = null;
         });
     });
 
     tabView.onDidChangeSelection((e) => {
         if (e.selection.length > 0) {
-            browserManager.activateBrowser()
-                .then(() => browserManager.sendMessage(wsClient, 'activateTab', { id: e.selection[0].id }));
+            if ("url" in e.selection[0]) {
+
+                browserManager.activateBrowser()
+                    .then(() => browserManager.sendMessage(wsClient, 'activateTab', { id: e.selection[0].id }));
+            } else {
+                browserManager.activateWindow(e.selection[0].id);
+            }
         }
     });
 
     revelanteTabView.onDidChangeSelection((e) => {
         if (e.selection.length > 0) {
-            browserManager.activateBrowser()
-                .then(() => browserManager.sendMessage(wsClient, 'activateTab', { id: e.selection[0].id }));
+            if ("url" in e.selection[0]) {
+
+                browserManager.activateBrowser()
+                    .then(() => browserManager.sendMessage(wsClient, 'activateTab', { id: e.selection[0].id }));
+            } else {
+                browserManager.activateWindow(e.selection[0].id);
+            }
         }
     });
 
@@ -165,7 +273,7 @@ export function activate(context: vscode.ExtensionContext): void {
             prompt: "Enter a search",
             placeHolder: "Enter your search here..."
         }))?.trim();
-        
+
         if (query) {
             const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
             browserManager.isBrowserOpen()
@@ -175,7 +283,7 @@ export function activate(context: vscode.ExtensionContext): void {
             console.warn('⚠️ No search query entered');
         }
     });
-    
+
     context.subscriptions.push(searchCommand);
 
 
@@ -193,14 +301,21 @@ export function activate(context: vscode.ExtensionContext): void {
     context.subscriptions.push(addFavoriteCommand);
     context.subscriptions.push(removeFavoriteCommand);
 
+    windowManager.startUpdatingActiveWindow(tabTreeDataProvider, revelanteTabTreeDataProvider);
 }
 
-function syncTabs(tabTreeDataProvider: TabTreeDataProvider, revelanteTabTreeDataProvider: TabTreeDataProvider): void {
-    const {allTabs, relevantTabs } = tabScoreCalculator.getScore();
-    tabTreeDataProvider.updateTabs(allTabs);
-    revelanteTabTreeDataProvider.updateTabs(relevantTabs);
-}
 
 export function deactivate(): void {
     console.log('🛑 WebSocket extension stopped.');
+
+    const iconsDir = path.resolve(__dirname, '..', 'assets', 'icons');
+    
+    fs.promises.rm(iconsDir, { recursive: true, force: true })
+    .then(() => {
+        console.log('"icons" folder deleted successfully.');
+    })
+    .catch((error) => {
+        console.error('❌ Error deleting the "icons" folder:', error);
+    });
+
 }
