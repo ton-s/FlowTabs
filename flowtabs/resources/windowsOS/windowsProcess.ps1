@@ -1,3 +1,4 @@
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 Add-Type -TypeDefinition @"
   using System;
   using System.Collections.Generic;
