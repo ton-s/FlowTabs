@@ -3,7 +3,7 @@ import * as WebSocket from 'ws';
 import * as path from 'path';
 import * as fs from 'fs';
 
-import TabScoreCalculator, { Tab, Window, TabOrWindow } from './tabsSort';
+import TabScoreCalculator, { Tab, Window, TabOrWindow } from './tabScoreCalculator';
 import FileSystemUtils from './utils';
 
 
@@ -15,9 +15,11 @@ class WindowManager {
     private readonly getAllWindowsScript = path.resolve(__dirname, '..', 'resources', 'windowsOS', 'windowsProcess.ps1');
     private readonly getActiveWindowScript = path.resolve(__dirname, '..', 'resources', 'windowsOS', 'getActiveWindow.ps1');
     private readonly getWindowIconScript = path.resolve(__dirname, '..', 'resources', 'windowsOS', 'getWindowIcon.ps1');
+
     protected windows: Window[] = [];
     private lastWindow: string = '';
 
+    private readonly excludedProcesses: Set<string> = new Set(['chrome', 'code']);
 
     // Méthode pour récupérer toutes les fenêtres
     async getAllWindows(): Promise<void> {
@@ -27,18 +29,27 @@ class WindowManager {
         const data = JSON.parse(stdout);
 
         data.forEach((d: any) => {
-            if (!this.windows.some(w => w.id === d.id)) {
+            const existingWindow = this.windows.find(w => w.id === d.id);
+            
+            if (!existingWindow) {
                 this.windows.push(d);
+            } else {
+                existingWindow.title = d.title;
             }
         });
 
         this.windows = this.windows.filter(currentw => {
             const isInData = data.some((neww: any) => currentw.id === neww.id);
-            const isNotExcluded = !['code', 'chrome'].includes(currentw.processName.toLowerCase());
+            const isNotExcluded = !this.excludedProcesses.has(currentw.processName.toLowerCase());
             return isInData && isNotExcluded;
         });
 
-        this.windows.forEach(w => this.getIcon({ id: w.id, exePath: w.exePath }));
+        await Promise.all(
+            this.windows
+                .filter(w => !w.icon)
+                .map(w => this.getIcon(w))
+        );
+        
 
         console.log('All windows:', this.windows);
     }
@@ -46,12 +57,15 @@ class WindowManager {
     // Méthode pour récupérer la fenêtre active et la mettre à jour
     async getActiveWindow(): Promise<void> {
         const command = `powershell -ExecutionPolicy RemoteSigned -File "${this.getActiveWindowScript}"`;
-        const activeWindowTitle = await FileSystemUtils.executeCommand(command);
-        const activeWindow = this.windows.find(w => w.title === activeWindowTitle.trim());
+        const activeWindowTitle = (await FileSystemUtils.executeCommand(command)).trim();
+
+        const activeWindow = this.windows.find(w => w.title === activeWindowTitle);
         if (activeWindow) {
             activeWindow.lastAccessed = Date.now();
+            this.updateWindowsFrequency(activeWindowTitle);
         }
-        this.updateWindowsFrequency(activeWindowTitle.trim());
+
+        this.lastWindow = activeWindowTitle;
     }
 
     private updateWindowsFrequency(currentWindow: string): void {
@@ -60,8 +74,6 @@ class WindowManager {
         if (window && currentWindow !== this.lastWindow) {
             window.frequency = window.frequency ? window.frequency + 1 : 1;
         }
-
-        this.lastWindow = currentWindow;
 
     }
 

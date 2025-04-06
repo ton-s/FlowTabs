@@ -89,7 +89,7 @@ class TabScoreCalculator {
         this.tabs.forEach((tab: TabOrWindow) => {
             scoreFrequency[tab.id] = tab.frequency / sumFrequency || 0;
         });
-        //console.log("Frequency Scores:", scoreFrequency);
+        console.log("Frequency Scores:", scoreFrequency);
         return scoreFrequency;
 
     }
@@ -107,11 +107,10 @@ class TabScoreCalculator {
 
         this.tabs.forEach((tab: TabOrWindow) => {
             const elapsedTime = (Date.now() - tab.lastAccessed) / 60000;
-            //console.log("Elapsed Time:", elapsedTime);
             scoreRecency[tab.id] = Math.exp(-lambda * elapsedTime) || 0;
 
         });
-        //console.log("Relevance Scores:", scoreRecency);
+        console.log("Relevance Scores:", scoreRecency);
         return scoreRecency;
     }
 
@@ -131,7 +130,7 @@ class TabScoreCalculator {
             score[tab.id] = alpha * this.calculateFrequency()[tab.id] + beta * this.calculateRecency()[tab.id];
         }
         );
-        //console.log("Final Scores:", score);
+        console.log("Final Scores:", score);
         return score;
     }
 
@@ -162,8 +161,8 @@ class TabScoreCalculator {
         const relevantTabs = tabInfoSplit === -1 ? otherTabs : otherTabs.slice(0, tabInfoSplit).concat(favoriteTabs);
         const allTabs = tabInfoSplit === -1 ? [] : otherTabs.slice(tabInfoSplit);
 
-        //console.log("Relevant Tabs:", relevantTabs);
-        //console.log("Favorite Tabs:", this.favoriteTabs);
+        console.log("Relevant Tabs:", relevantTabs);
+        console.log("Favorite Tabs:", this.favoriteTabs);
 
         return { allTabs, relevantTabs };
 
