@@ -17,7 +17,7 @@ class WindowManager {
     private readonly getWindowIconScript = path.resolve(__dirname, '..', 'resources', 'windowsOS', 'getWindowIcon.ps1');
 
     protected windows: Window[] = [];
-    private lastWindow: string = '';
+    private lastWindow: number = 0;
 
     private readonly excludedProcesses: Set<string> = new Set(['chrome', 'code']);
 
@@ -57,22 +57,22 @@ class WindowManager {
     // Méthode pour récupérer la fenêtre active et la mettre à jour
     async getActiveWindow(): Promise<void> {
         const command = `powershell -ExecutionPolicy RemoteSigned -File "${this.getActiveWindowScript}"`;
-        const activeWindowTitleRaw = await FileSystemUtils.executeCommand(command);
-        const activeWindowTitle = activeWindowTitleRaw.trim();
+        const activeWindowIdRaw = await FileSystemUtils.executeCommand(command);
+        const activeWindowId = activeWindowIdRaw.trim();
 
-        const activeWindow = this.windows.find(w => w.title === activeWindowTitle);
+        const activeWindow = this.windows.find(w => w.id === activeWindowId);
         if (activeWindow) {
             activeWindow.lastAccessed = Date.now();
-            this.updateWindowsFrequency(activeWindowTitle);
+            this.updateWindowsFrequency(activeWindowId);
         }
 
-        this.lastWindow = activeWindowTitle;
+        this.lastWindow = activeWindowId;
     }
 
-    private updateWindowsFrequency(currentWindow: string): void {
-        const window = this.windows.find(w => w.title === currentWindow);
+    private updateWindowsFrequency(activeWindowId: number): void {
+        const window = this.windows.find(w => w.id === activeWindowId);
 
-        if (window && currentWindow !== this.lastWindow) {
+        if (window && activeWindowId !== this.lastWindow) {
             window.frequency = window.frequency ? window.frequency + 1 : 1;
         }
 

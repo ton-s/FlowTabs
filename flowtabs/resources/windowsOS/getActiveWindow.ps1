@@ -10,7 +10,8 @@ public class WindowInfo {
 }
 "@
 
+# Récupérer le handle de la fenêtre active
 $handle = [WindowInfo]::GetForegroundWindow()
-$buffer = New-Object System.Text.StringBuilder 256
-[WindowInfo]::GetWindowText($handle, $buffer, $buffer.Capacity) | Out-Null
-$buffer.ToString()
+
+# Afficher le handle de la fenêtre
+$handle
