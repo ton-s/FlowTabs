@@ -57,7 +57,8 @@ class WindowManager {
     // Méthode pour récupérer la fenêtre active et la mettre à jour
     async getActiveWindow(): Promise<void> {
         const command = `powershell -ExecutionPolicy RemoteSigned -File "${this.getActiveWindowScript}"`;
-        const activeWindowTitle = (await FileSystemUtils.executeCommand(command)).trim();
+        const activeWindowTitleRaw = await FileSystemUtils.executeCommand(command);
+        const activeWindowTitle = activeWindowTitleRaw.trim();
 
         const activeWindow = this.windows.find(w => w.title === activeWindowTitle);
         if (activeWindow) {
@@ -93,7 +94,8 @@ class WindowManager {
 
     }
 
-    public async startUpdatingActiveWindow(tabTreeDataProvider: TabTreeDataProvider, revelanteTabTreeDataProvider: TabTreeDataProvider, interval: number = 5000): Promise<void> {
+    public async startUpdatingActiveWindow(tabTreeDataProvider: TabTreeDataProvider,
+        revelanteTabTreeDataProvider: TabTreeDataProvider, interval: number = 2000): Promise<void> {
         // Ensuite mettre à jour la fenêtre active périodiquement
         const updateCycle = async () => {
             await this.getAllWindows();
