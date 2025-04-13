@@ -36,16 +36,16 @@ interface ScoreMap {
 
 
 /**
- * A class to calculate scores for a list of tabs based on their frequency and recency.
+ * A class to calculate scores for a list of tabs and windows based on their frequency and recency.
  * It calculates individual scores and splits tabs into relevant and non-relevant ones.
  * 
  * @class TabScoreCalculator
  */
 class TabScoreCalculator {
-    private tabs: TabOrWindow[]; // The list of tabs to be evaluated.
+    private tabs: TabOrWindow[]; // The list of tabs and/or windows to be evaluated.
     private newTabs: Tab[] = [];
     private newWindows: Window[] = [];
-    private favoriteTabs: TabOrWindow[]; // The list of favorite tabs.
+    private favoriteTabs: TabOrWindow[]; // The list of favorite tabs and/or windows.
 
     constructor(tabs: TabOrWindow[]) {
         this.tabs = tabs;
@@ -165,7 +165,6 @@ class TabScoreCalculator {
         console.log("Favorite Tabs:", this.favoriteTabs);
 
         return { allTabs, relevantTabs };
-
 
     }
 

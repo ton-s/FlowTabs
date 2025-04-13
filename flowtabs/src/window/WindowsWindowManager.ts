@@ -1,9 +1,11 @@
 import path from 'path';
 
+import WindowManagerInterface from './WindowManagerInterface';
 import FileSystemUtils from '../utils';
 import { Window } from '../tabScoreCalculator';
 
-class WindowManager {
+
+class WindowsWindowManager implements WindowManagerInterface {
     private readonly getAllWindowsScript = path.resolve(__dirname, '../..', 'resources', 'windowsOS', 'windowsProcess.ps1');
     private readonly getActiveWindowScript = path.resolve(__dirname, '../..', 'resources', 'windowsOS', 'getActiveWindow.ps1');
     private readonly getWindowIconScript = path.resolve(__dirname, '../..', 'resources', 'windowsOS', 'getWindowIcon.ps1');
@@ -93,4 +95,4 @@ class WindowManager {
 
 }
 
-export default WindowManager;
+export default WindowsWindowManager;

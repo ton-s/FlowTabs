@@ -5,7 +5,8 @@ import * as fs from 'fs';
 
 import TabScoreCalculator, { Tab } from './tabScoreCalculator';
 import OSFactory from './os/OSFactory';
-import WindowManager from './window/WindowManager';
+import WindowsWindowManager from './window/WindowsWindowManager';
+import WindowManagerInterface from './window/WindowManagerInterface';
 import TabTreeDataProvider from './views/TabTreeDataProvider';
 
 
@@ -20,7 +21,7 @@ function syncTabs(tabTreeDataProvider: TabTreeDataProvider, revelanteTabTreeData
 }
 
 async function startUpdatingActiveWindow(tabTreeDataProvider: TabTreeDataProvider, revelanteTabTreeDataProvider: TabTreeDataProvider,
-     windowManager: WindowManager, tabScoreCalculator: TabScoreCalculator, interval: number = 2000): Promise<void> {
+     windowManager: WindowManagerInterface, tabScoreCalculator: TabScoreCalculator, interval: number = 2000): Promise<void> {
     // Function to update the active windows
     const updateCycle = async () => {
         await windowManager.getAllWindows();
@@ -34,14 +35,48 @@ async function startUpdatingActiveWindow(tabTreeDataProvider: TabTreeDataProvide
     updateCycle();
 }
 
+/**
+ * Handles the selection change event in a VSCode TreeView.
+ * Depending on the selected item, this function either activates a browser tab
+ * or an operating system window.
+ * 
+ * If the selected item contains a URL, the function activates the browser and sends a message
+ * via WebSocket to activate the corresponding tab. If the item does not contain a URL,
+ * the function activates an OS window associated with the selected item.
+ * 
+ * @param {any} e - The event containing the selection information from the TreeView.
+ *                  It is expected to have a `selection` property which is an array
+ *                  of selected items. Each item can have an `id` and, in some cases, a `url`.
+ * 
+ * @param {any} browserManager - An object responsible for interacting with the browser.
+ * 
+ * @param {WebSocket | null} wsClient - The WebSocket instance used to communicate with a remote client.
+ *                                      If `null`, it means no client is connected.
+ * 
+ * @returns {void} - This function does not return a value. It performs asynchronous actions
+ *                   via promises.
+ */
+function handleSelectionChange(e: any, browserManager: any, wsClient: WebSocket | null): void {
+    if (e.selection.length > 0) {
+        if ("url" in e.selection[0]) {
+            browserManager.activateBrowser()
+                .then(() => browserManager.sendMessage(wsClient, 'activateTab', { id: e.selection[0].id }));
+        } else {
+            browserManager.activateWindow(e.selection[0].id);
+        }
+    }
+}
+
 
 // Main extension activation function
 export function activate(context: vscode.ExtensionContext): void {
     const wss = new WebSocket.Server({ port: Number(WEBSOCKET_PORT) });
     let wsClient: WebSocket | null = null;
+
     const browserManager = OSFactory.getOSManager();
-    const windowManager = new WindowManager();
+    const windowManager = new WindowsWindowManager();
     const tabScoreCalculator = new TabScoreCalculator([]);
+    
     const tabTreeDataProvider = new TabTreeDataProvider(tabScoreCalculator);
     const revelanteTabTreeDataProvider = new TabTreeDataProvider(tabScoreCalculator);
 
@@ -79,30 +114,13 @@ export function activate(context: vscode.ExtensionContext): void {
         });
     });
 
-    tabView.onDidChangeSelection((e) => {
-        if (e.selection.length > 0) {
-            if ("url" in e.selection[0]) {
 
-                browserManager.activateBrowser()
-                    .then(() => browserManager.sendMessage(wsClient, 'activateTab', { id: e.selection[0].id }));
-            } else {
-                browserManager.activateWindow(e.selection[0].id);
-            }
-        }
-    });
+    tabView.onDidChangeSelection((e) => handleSelectionChange(e, browserManager, wsClient));
+    revelanteTabView.onDidChangeSelection((e) => handleSelectionChange(e, browserManager, wsClient));
+    
 
-    revelanteTabView.onDidChangeSelection((e) => {
-        if (e.selection.length > 0) {
-            if ("url" in e.selection[0]) {
-
-                browserManager.activateBrowser()
-                    .then(() => browserManager.sendMessage(wsClient, 'activateTab', { id: e.selection[0].id }));
-            } else {
-                browserManager.activateWindow(e.selection[0].id);
-            }
-        }
-    });
-
+    // Register the command to search the browser
+    // this command will be triggered when the user enters a search via the "Search" button in the user interface.
     const searchCommand = vscode.commands.registerCommand('flowtabs.search', async () => {
         const query = (await vscode.window.showInputBox({
             prompt: "Enter a search",
