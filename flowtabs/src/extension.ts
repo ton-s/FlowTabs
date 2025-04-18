@@ -15,9 +15,9 @@ const WEBSOCKET_PORT = 5000;
 
 function syncTabs(tabTreeDataProvider: TabTreeDataProvider, revelanteTabTreeDataProvider: TabTreeDataProvider,
     tabScoreCalculator: TabScoreCalculator): void {
-    const { allTabs, relevantTabs } = tabScoreCalculator.getScore();
+    const { allTabs, relevantTabsWithFavorites } = tabScoreCalculator.getScore();
     tabTreeDataProvider.updateTabs(allTabs);
-    revelanteTabTreeDataProvider.updateTabs(relevantTabs);
+    revelanteTabTreeDataProvider.updateTabs(relevantTabsWithFavorites);
 }
 
 async function startUpdatingActiveWindow(tabTreeDataProvider: TabTreeDataProvider, revelanteTabTreeDataProvider: TabTreeDataProvider,

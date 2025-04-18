@@ -143,7 +143,7 @@ class TabScoreCalculator {
     *      - allTabs: The list of non-relevant tabs (those with a score below 0.5).
     *      - relevantTabs: The list of relevant tabs (those with a score of 0.5 or higher).
     */
-    public getScore(): { allTabs: TabOrWindow[], relevantTabs: TabOrWindow[] } {
+    public getScore(): { allTabs: TabOrWindow[], relevantTabsWithFavorites: TabOrWindow[] } {
         this.tabs = [...this.newTabs, ...this.newWindows];
         
         const score = this.calculateScore();
@@ -154,17 +154,17 @@ class TabScoreCalculator {
         const favoriteTabs = this.tabs.filter((tab: TabOrWindow) => this.checkFavoriteTab(tab));
         const otherTabs = this.tabs.filter((tab: TabOrWindow) => !this.checkFavoriteTab(tab));
 
-
         // Split the list of tabs into relevant and non-relevant tabs
         const tabInfoSplit = otherTabs.findIndex((tab: TabOrWindow) => score[tab.id] < 0.5);
 
-        const relevantTabs = tabInfoSplit === -1 ? otherTabs : otherTabs.slice(0, tabInfoSplit).concat(favoriteTabs);
+        const relevantTabs = tabInfoSplit === -1 ? otherTabs : otherTabs.slice(0, tabInfoSplit);
+        const relevantTabsWithFavorites = relevantTabs.concat(favoriteTabs);
         const allTabs = tabInfoSplit === -1 ? [] : otherTabs.slice(tabInfoSplit);
 
         console.log("Relevant Tabs:", relevantTabs);
         console.log("Favorite Tabs:", this.favoriteTabs);
 
-        return { allTabs, relevantTabs };
+        return { allTabs, relevantTabsWithFavorites };
 
     }
 
