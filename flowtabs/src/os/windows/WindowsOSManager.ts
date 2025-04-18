@@ -6,7 +6,7 @@ import FileSystemUtils from "../../utils";
 /**
  * WindowsOSManager is a platform-specific implementation of OSManager
  * for Windows operating systems. It provides methods to interact with
- * the Chrome browser and manage window focus using system-level commands.
+ * the browser and manage window focus using system-level commands.
  *
  * This class relies on the external utility `nircmd.exe` for window activation
  * and uses built-in Windows command-line tools like `tasklist` and `start`.
@@ -17,28 +17,29 @@ import FileSystemUtils from "../../utils";
 
 class WindowsOSManager extends OSManager {
     private readonly nircmdPath = path.join(__dirname, '../../..', 'resources', 'windowsOS', 'nircmd.exe');
+    private readonly navigator : string = 'chrome';
     
     /**
-     * Checks whether the Chrome browser is currently running.
+     * Checks whether the browser is currently running.
      * 
-     * Uses the `tasklist` command to search for 'chrome.exe' in the list of running processes.
+     * Uses the `tasklist` command to search for '[navigator].exe' in the list of running processes.
      * 
-     * @returns {Promise<boolean>} - A promise that resolves to `true` if Chrome is running, `false` otherwise.
+     * @returns {Promise<boolean>} - A promise that resolves to `true` if browser is running, `false` otherwise.
      */
     async isBrowserOpen(): Promise<boolean> {
-        const stdout = await FileSystemUtils.executeCommand('tasklist /FI "IMAGENAME eq chrome.exe"');
-        return stdout.includes('chrome.exe'); 
+        const stdout = await FileSystemUtils.executeCommand(`tasklist /FI "IMAGENAME eq ${this.navigator}.exe"`);
+        return stdout.includes(this.navigator + '.exe'); 
     }
 
     /**
-     * Brings the Chrome browser window to the foreground.
+     * Brings the browser window to the foreground.
      * 
-     * Uses the external `nircmd.exe` utility to activate the window associated with the `chrome.exe` process.
+     * Uses the external `nircmd.exe` utility to activate the window associated with the `[navigator].exe` process.
      * 
      * @returns {Promise<void>} - A promise that resolves when the browser window is activated.
      */
     async activateBrowser(): Promise<void> {
-        await FileSystemUtils.executeCommand(`"${this.nircmdPath}" win activate process chrome.exe`);
+        await FileSystemUtils.executeCommand(`"${this.nircmdPath}" win activate process ${this.navigator}.exe`);
     }
 
     /**
@@ -54,15 +55,15 @@ class WindowsOSManager extends OSManager {
     }
 
     /**
-     * Opens the Chrome browser with the specified URL.
+     * Opens the browser with the specified URL.
      * 
-     * Uses the `start` command to open Chrome with the provided URL.
+     * Uses the `start` command to open browser with the provided URL.
      * 
-     * @param {string} url - The URL to open in the Chrome browser.
+     * @param {string} url - The URL to open in the browser.
      * @returns {Promise<void>} - A promise that resolves when the browser is launched with the given URL.
      */
     async openBrowser(url: string): Promise<void> {
-        await FileSystemUtils.executeCommand(`start chrome "${url}"`);
+        await FileSystemUtils.executeCommand(`start ${this.navigator} "${url}"`);
     }
 }
 
