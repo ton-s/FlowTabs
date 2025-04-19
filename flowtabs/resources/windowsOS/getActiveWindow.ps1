@@ -10,8 +10,8 @@ public class WindowInfo {
 }
 "@
 
-# Récupérer le handle de la fenêtre active
+# Retrieve the handle of the active window
 $handle = [WindowInfo]::GetForegroundWindow()
 
-# Afficher le handle de la fenêtre
+# Return window handle
 $handle

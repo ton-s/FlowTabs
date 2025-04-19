@@ -45,27 +45,27 @@ Add-Type -TypeDefinition @"
       string[] excludedProcesses = { "ApplicationFrameHost", "TextInputHost", "SystemSettings" };
 
       EnumWindows((hWnd, lParam) => {
-        if (hWnd == shellWindow) return true; // Ignore la fenêtre du shell
-        if (!IsWindowVisible(hWnd)) return true; // Ignore les fenêtres invisibles
+        if (hWnd == shellWindow) return true; // Ignore shell window
+        if (!IsWindowVisible(hWnd)) return true; // Ignore invisible windows
 
-        // Vérifie si la fenêtre est principale (pas un enfant)
+        // Checks if the window is main (not a child)
         if (GetAncestor(hWnd, GA_ROOTOWNER) != hWnd) return true;
 
-        // Vérifie si la fenêtre est une ToolWindow ou une fenêtre non activable
+        // Checks whether the window is a ToolWindow or a non-activatable window
         int exStyle = GetWindowLong(hWnd, GWL_EXSTYLE);
         if ((exStyle & WS_EX_TOOLWINDOW) != 0 || (exStyle & WS_EX_NOACTIVATE) != 0) return true;
 
-        // Vérifie le nom de la classe de la fenêtre pour exclure certains types connus
+        // Checks window class name to exclude known types
         var className = new StringBuilder(256);
         GetClassName(hWnd, className, 256);
-        if (className.ToString() == "ApplicationFrameWindow") return true; // Exclut les fenêtres hébergées
+        if (className.ToString() == "ApplicationFrameWindow") return true; // Excludes hosted windows
 
-        // Récupération du titre de la fenêtre
+        // Window title retrieval
         var title = new StringBuilder(256);
         GetWindowText(hWnd, title, 256);
-        if (title.Length == 0) return true; // Exclut les fenêtres sans titre
+        if (title.Length == 0) return true; // Excludes untitled windows
 
-        // Récupération du processus
+        // Process recovery
         uint processId;
         GetWindowThreadProcessId(hWnd, out processId);
         Process process;
@@ -75,10 +75,10 @@ Add-Type -TypeDefinition @"
           process = Process.GetProcessById((int)processId);
         }
         catch {
-          return true; // Ignore les processus qui ne sont plus actifs
+          return true; // Ignores processes that are no longer active
         }
 
-        // Exclure les processus connus d'arrière-plan
+        // Exclude known background processes
         if (Array.Exists(excludedProcesses, element => element.Equals(process.ProcessName, StringComparison.OrdinalIgnoreCase)))
           return true;
 
@@ -86,11 +86,11 @@ Add-Type -TypeDefinition @"
         try {
           exePath = process.MainModule.FileName;
         } catch {
-          return true; // Si on ne peut pas accéder au chemin, on ignore cette fenêtre
+          return true; // If the path cannot be accessed, this window is ignored
         }
 
 
-        // Ajoute uniquement les fenêtres qui passent les filtres
+        // Adds only windows that pass filters
         var window = new Dictionary<string, string>
         {
           { "id", hWnd.ToString() },
@@ -108,8 +108,8 @@ Add-Type -TypeDefinition @"
   }
 "@
 
-# Récupérer les fenêtres et les retourner sous forme JSON sans Newtonsoft
+# Retrieve windows and return them as JSON without Newtonsoft
 $windows = [Window]::GetOpenWindows()
 
-# Convertir en JSON avec la méthode native de PowerShell
+# Convert to JSON using PowerShell's native method
 $windows | ConvertTo-Json -Depth 3
