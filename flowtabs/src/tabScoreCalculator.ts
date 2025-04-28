@@ -103,11 +103,13 @@ class TabScoreCalculator {
      */
     private calculateRecency(): ScoreMap {
         const scoreRecency: ScoreMap = {};
-        const lambda = 0.07;
+        //const lambda = 0.07;
+        const tMax = 15;
 
         this.tabs.forEach((tab: TabOrWindow) => {
             const elapsedTime = (Date.now() - tab.lastAccessed) / 60000;
-            scoreRecency[tab.id] = Math.exp(-lambda * elapsedTime) || 0;
+            //scoreRecency[tab.id] = Math.exp(-lambda * elapsedTime) || 0;
+            scoreRecency[tab.id] = Math.max(0, 1 - (elapsedTime / tMax)) || 0; // Linear decay function
 
         });
         console.log("Relevance Scores:", scoreRecency);
@@ -123,8 +125,8 @@ class TabScoreCalculator {
      */
     private calculateScore(): ScoreMap {
         const score: ScoreMap = {};
-        const alpha = 0.3;
-        const beta = 0.7;
+        const alpha = 0.2;
+        const beta = 0.8;
 
         this.tabs.forEach((tab: TabOrWindow) => {
             score[tab.id] = alpha * this.calculateFrequency()[tab.id] + beta * this.calculateRecency()[tab.id];
