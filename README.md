@@ -1,7 +1,7 @@
 # FlowTabs - Extension VS Code de gestion de fenêtres et d'onglets
 
 
-FlowTabs est **un extension VS Code réalisé dans le cadre de mon mémoire à l'Université de Namur**. Cet extension VS Code permettant de synchroniser et gérer les onglets/fenêtres du navigateur et du bureau directement depuis l’éditeur. Cette solution est idéale pour les développeurs souhaitant naviguer rapidement entre leurs ressources et leur environnement de travail.
+FlowTabs est **un extension VS Code réalisé dans le cadre de mon mémoire à l'Université de Namur**. Cet extension VS Code permettant de synchroniser et gérer les onglets du navigateur ainsi que les fenêtres du bureau directement depuis l’éditeur de code. Cette solution est idéale pour les développeurs souhaitant naviguer rapidement entre leurs ressources et leur environnement de développement sans être submergé.
 
 ## 🚀 Backlog
 
