@@ -104,7 +104,7 @@ class TabScoreCalculator {
     private calculateRecency(): ScoreMap {
         const scoreRecency: ScoreMap = {};
         //const lambda = 0.07;
-        const tMax = 15;
+        const tMax = 12;
 
         this.tabs.forEach((tab: TabOrWindow) => {
             const elapsedTime = (Date.now() - tab.lastAccessed) / 60000;
