@@ -10,9 +10,13 @@ class WebSocketManager {
         this.tabManager = tabManager;
     }
 
+    /**
+     * Initializes and manages the WebSocket connection.
+     * Sets up event handlers for messages, errors, and reconnections.
+     */
     connect() {
         console.log("🔄 Attempting to connect to WebSocket...");
-        
+
         this.ws = new WebSocket(this.WS_URL);
 
         this.ws.onopen = () => {
@@ -25,6 +29,7 @@ class WebSocketManager {
         this.ws.onmessage = (message) => {
             try {
                 const data = JSON.parse(message.data);
+
                 if (data.action === "activateTab") {
                     this.tabManager.activateTab(data.id);
                     console.log("📥 Activating tab:", data.id);
@@ -68,13 +73,24 @@ class WebSocketManager {
     }
 }
 
+
+/**
+ * Manage access history and tab usage frequency
+ * in the Chrome browser. Interacts with a WebSocket to send
+ * data to a VSCode extension.
+ */
 class TabManager {
     constructor(webSocketManager) {
-        this.tabHistory = {}; // Stores the last accessed time of tabs
+        this.tabHistory = {};  // Stores tab metadata (last accessed time and usage frequency)
         this.webSocketManager = webSocketManager;
         this.listenToTabEvents();
     }
 
+    /**
+     * Initializes event listeners for Chrome tabs.
+     * This allows you to track tab activations, updates, deletions, 
+     * and tab creations to keep local history up to date
+     */
     listenToTabEvents() {
         chrome.tabs.onActivated.addListener((activeInfo) => {
             this.updateTabHistoryLastAccessed(activeInfo.tabId);
@@ -99,34 +115,53 @@ class TabManager {
         });
     }
 
+    /**
+     * Updates the last accessed timestamp of a tab.
+     * Initializes the entry if it doesn't exist.
+     * @param {number} tabId - ID of the tab to update.
+     */
     updateTabHistoryLastAccessed(tabId) {
         const now = Date.now();
 
         if (!this.tabHistory[tabId]) {
-            this.tabHistory[tabId] = { lastAccessed: now};
+            this.tabHistory[tabId] = { lastAccessed: now };
         }
         this.tabHistory[tabId].lastAccessed = now;
 
     }
 
+    /**
+     * Increments the frequency count of a tab.
+     * Initializes the frequency if it doesn't exist.
+     * @param {number} tabId - ID of the tab.
+     */
     updateFrequency(tabId) {
-        if(!this.tabHistory[tabId]) {
+        if (!this.tabHistory[tabId]) {
             this.tabHistory[tabId] = { frequency: 0 };
         } else {
             this.tabHistory[tabId].frequency = this.tabHistory[tabId].frequency + 1 || 1;
         }
-        
+
 
         console.log("History : ", this.tabHistory);
     }
 
-    
+
+    /**
+     * Resets the frequency of a tab to 1.
+     * Typically used when a tab is updated.
+     * @param {number} tabId - ID of the tab.
+     */
     resetFrequency(tabId) {
         if (this.tabHistory[tabId]) {
             this.tabHistory[tabId].frequency = 1;
         }
     }
 
+    /**
+     * Sends the current tab information to the VSCode extension via WebSocket.
+     * It retrieves all tabs, updates their last accessed time and frequency, and sends the data.
+     */
     async sendTabsToVSCode() {
         const tabs = await chrome.tabs.query({});
         console.log(tabs);
@@ -139,7 +174,7 @@ class TabManager {
             }
         });
 
-        
+
         const tabInfo = tabs.map(tab => ({
             id: tab.id,
             title: tab.title,
@@ -148,10 +183,14 @@ class TabManager {
             lastAccessed: this.tabHistory[tab.id].lastAccessed,
             frequency: this.tabHistory[tab.id].frequency
         }));
-        
+
         this.webSocketManager.send({ tabs: tabInfo });
     }
 
+    /**
+     * Activates a tab by its ID and updates its metadata.
+     * @param {number} tabId - The ID of the tab to activate.
+     */
     activateTab(tabId) {
         chrome.tabs.get(tabId, (tab) => {
             if (tab) {
@@ -169,7 +208,7 @@ const webSocketManager = new WebSocketManager();
 const tabManager = new TabManager(webSocketManager);
 webSocketManager.setTabManager(tabManager);
 
-// Keep the extension alive (best practice ???)
+// Keep the extension alive
 chrome.alarms.create("keepAlive", { periodInMinutes: 0.4 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
