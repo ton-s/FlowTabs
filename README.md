@@ -16,9 +16,22 @@ FlowTabs est **un extension VS Code réalisé dans le cadre de mon mémoire à l
 
 ## 🔨 Développement
 
-### 🧱 Structure du projet
-- 📁 `flowtabs/` – Code source de l’extension VS Code
-- 📁 `extension-chrome/` – Code source de l’extension Chrome
+### 🧱 Structure du projet en générale
+- 📁 `flowtabs/` – Dossier principal contenant le code source de l’extension VS Code
+   - `ressources/` - Dossier pour les ressources annexes de l’extension comme les script shell qui permet la récupération des fenêtres ouvertes, etc
+   - `src/` - Dossier principal du code source
+      - `os/` - Gère le changement entre les différentes fenêtres du système
+      - `views/` - Gère l’affichage des vues (zones de contenu) de l’extension
+      - `windows/` - Permet de récupérer les fenêtres ouvertes et de mettre à jour leurs données
+      - `extension.ts` - Fichier principal qui contrôle le fonctionnement global de l’extension
+      - `tabScoreCalculator.ts` - Contient la logique pour évaluer la pertinence des onglets et fenêtres ouverts
+      - `utils.ts` -  Fournit des fonctions utilitaires réutilisables
+   - `...`
+
+
+- 📁 `extension-chrome/` – Dossier contenant le code source de l’extension Chrome
+   - `background.js` - Script principal qui s’exécute en arrière-plan pour gérer les événements de l’extension
+   - `manifest.json` - Fichier de configuration de l'extension
 
 ### 💻 Extension VS Code
 
@@ -42,10 +55,14 @@ $ npm install
    - Sélectionnez le dossier `chrome-extension` du projet
 4. L'extension est maintenant prête à être utilisée
 
-### 🔄 Synchronisation entre Navigateur et VS Code
+### 🔄 Synchronisation entre le Navigateur et VS Code
 
 1. Ouvrir le navigateur et naviguer sur des onglets
 2. Dans VS Code, ouvrez la vue **FlowTabs** pour voir les onglets
+
+### 🔄 Synchronisation entre l'OS et VS Code
+
+La gestion des fenêtres est directement intégrée dans le code de l'extension de VS Code. La synchronisation démarre dès l'activation de l'extension. Il suffit également d'ouvrir l'extension FlowTabs pour les voir apparaître.
 
 ### 🔍 Débogage
 
