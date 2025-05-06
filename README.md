@@ -12,7 +12,12 @@ FlowTabs est **un extension VS Code réalisé dans le cadre de mon mémoire à l
 
 - **VS Code**
 - **Google Chrome**
-- **Node.js**
+- **Windows 10/11**
+- **Node.js**     
+
+<br>
+
+Pour cette version de l'extension, la compatibilité a été déterminée pour le système d'exploitation et le navigateur mentionnée ci-dessus. Cependant, il est tout à fait envisageable qu'à l'avenir, elle puisse être étendue à d'autres navigateurs et systèmes d'exploitation. L'extension prend déjà cela en compte en ajustant la logique du code.
 
 ## 🔨 Développement
 
