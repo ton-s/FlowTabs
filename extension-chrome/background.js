@@ -2,7 +2,9 @@ class WebSocketManager {
     constructor() {
         this.ws = null;
         this.WS_URL = "ws://localhost:5000";
-        this.RECONNECT_INTERVAL = 5000;
+        this.RECONNECT_INTERVAL = 6000;
+        this.reconnectAttempts = 0;
+        this.maxReconnectAttempts = 10; // Maximum number of reconnection attempts
         this.connect();
     }
 
@@ -21,6 +23,7 @@ class WebSocketManager {
 
         this.ws.onopen = () => {
             console.log("✅ WebSocket connection established!");
+            this.reconnectAttempts = 0; // Reset attempts on successful connection
             if (this.tabManager) {
                 this.tabManager.sendTabsToVSCode();
             }
@@ -57,10 +60,19 @@ class WebSocketManager {
     }
 
     reconnect() {
+
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            console.error("❌ Max reconnect attempts reached. Stopping reconnection.");
+            return;
+        }
+
+        const delay = Math.min(this.RECONNECT_INTERVAL * Math.pow(2, this.reconnectAttempts), 60000); // Exponential backoff
+
         setTimeout(() => {
             console.log("🔄 Reconnecting to WebSocket...");
+            this.reconnectAttempts++;
             this.connect();
-        }, this.RECONNECT_INTERVAL);
+        }, delay);
     }
 
     send(data) {
@@ -181,7 +193,8 @@ class TabManager {
             url: tab.url,
             icon: tab.favIconUrl,
             lastAccessed: this.tabHistory[tab.id].lastAccessed,
-            frequency: this.tabHistory[tab.id].frequency
+            frequency: this.tabHistory[tab.id].frequency,
+            browser: "chrome",
         }));
 
         this.webSocketManager.send({ tabs: tabInfo });

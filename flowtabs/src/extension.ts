@@ -114,11 +114,13 @@ export function activate(context: vscode.ExtensionContext): void {
         });
     });
 
-
-    tabView.onDidChangeSelection((e) => handleSelectionChange(e, browserManager, wsClient));
-    revelanteTabView.onDidChangeSelection((e) => handleSelectionChange(e, browserManager, wsClient));
+    // Register the command to handle tree item clicks
+    context.subscriptions.push(
+        vscode.commands.registerCommand('myExtension.handleTreeItemClick', (element) => {
+            handleSelectionChange({ selection: [element] }, browserManager, wsClient);
+        })
+    );
     
-
     // Register the command to search the browser
     // this command will be triggered when the user enters a search via the "Search" button in the user interface.
     const searchCommand = vscode.commands.registerCommand('flowtabs.search', async () => {

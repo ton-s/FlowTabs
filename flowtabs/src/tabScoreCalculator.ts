@@ -7,6 +7,7 @@ export interface Tab {
     icon: string;
     lastAccessed: number;
     frequency: number;
+    browser: string;
 }
 
 // Interface representing a window
@@ -160,7 +161,7 @@ class TabScoreCalculator {
         const tabInfoSplit = otherTabs.findIndex((tab: TabOrWindow) => score[tab.id] < 0.5);
 
         const relevantTabs = tabInfoSplit === -1 ? otherTabs : otherTabs.slice(0, tabInfoSplit);
-        const relevantTabsWithFavorites = relevantTabs.concat(favoriteTabs);
+        const relevantTabsWithFavorites = favoriteTabs.concat(relevantTabs);
         const allTabs = tabInfoSplit === -1 ? [] : otherTabs.slice(tabInfoSplit);
 
         console.log("Relevant Tabs:", relevantTabs);

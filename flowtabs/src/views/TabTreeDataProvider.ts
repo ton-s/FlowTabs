@@ -18,14 +18,34 @@ class TabTreeDataProvider implements vscode.TreeDataProvider<TabOrWindow> {
     }
 
     getTreeItem(element: TabOrWindow): vscode.TreeItem {
-        const treeItem = new vscode.TreeItem(element.title, vscode.TreeItemCollapsibleState.None);
-        if ('url' in element) {
+        
+        const isFavorite = this.tabScoreCalculator.checkFavoriteTab(element);
+
+        let baseTitle = 'browser' in element
+            ? `${element.title} - ${element.browser}`
+            : element.title;
+            
+
+        const title = isFavorite ? `⭐ ${baseTitle}` : baseTitle;
+
+
+        const treeItem = new vscode.TreeItem(title, vscode.TreeItemCollapsibleState.None);
+
+        // Command to execute when the tree item is clicked
+        treeItem.command = {
+            command: 'myExtension.handleTreeItemClick',
+            title: 'Click Tree Item',
+            arguments: [element]
+        };
+
+        if ('browser' in element) {
             treeItem.iconPath = element.icon ? vscode.Uri.parse(element.icon) : new vscode.ThemeIcon('globe');
         } else {
             treeItem.iconPath = element.icon ? vscode.Uri.joinPath(vscode.Uri.file(__dirname), element.icon) : new vscode.ThemeIcon('window');
         }
 
-        treeItem.contextValue = this.tabScoreCalculator.checkFavoriteTab(element) ? 'favoriteTab' : 'tab';
+        treeItem.contextValue = isFavorite ? 'favoriteTab' : 'tab';
+
 
         return treeItem;
     }

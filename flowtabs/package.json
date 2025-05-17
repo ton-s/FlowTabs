@@ -18,6 +18,10 @@
     },
     "commands": [
       {
+        "command": "myExtension.handleTreeItemClick",
+        "title": "Handle Tree Item Click"
+      },
+      {
         "command": "flowtabs.search",
         "title": "Run a search",
         "icon": {
@@ -55,11 +59,11 @@
       "flowtabs": [
         {
           "id": "relevanteTabSyncView",
-          "name": "Relevant Tabs"
+          "name": "🔥 Relevant Tabs"
         },
         {
           "id": "tabSyncView",
-          "name": "All Tabs"
+          "name": "📁 Other tabs"
         }
       ]
     },
