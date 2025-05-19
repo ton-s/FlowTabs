@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Tab Sync to VS Code",
+  "name": "FlowTabs - Tab Sync to VSCode",
   "version": "1.0",
   "permissions": ["tabs", "activeTab", "alarms"],
   "host_permissions": ["<all_urls>", "http://localhost:5000/"],
