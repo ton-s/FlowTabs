@@ -10,7 +10,7 @@ import WindowManagerInterface from './window/WindowManagerInterface';
 import TabTreeDataProvider from './views/TabTreeDataProvider';
 
 
-const WEBSOCKET_PORT = 5000;
+const WEBSOCKET_PORT = 34343;
 
 
 function syncTabs(tabTreeDataProvider: TabTreeDataProvider, revelanteTabTreeDataProvider: TabTreeDataProvider,

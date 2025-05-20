@@ -1,7 +1,7 @@
 class WebSocketManager {
     constructor() {
         this.ws = null;
-        this.WS_URL = "ws://localhost:5000";
+        this.WS_URL = "ws://localhost:34343";
         this.RECONNECT_INTERVAL = 6000;
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 10; // Maximum number of reconnection attempts
@@ -60,9 +60,16 @@ class WebSocketManager {
     }
 
     reconnect() {
+        if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) {
+            this.ws.close(); // close the current connection before reconnecting
+        }
 
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
             console.error("❌ Max reconnect attempts reached. Stopping reconnection.");
+            setTimeout(() => {
+                this.reconnectAttempts = 0; // Reset attempts after max attempts
+                this.connect(); // Attempt to reconnect after max attempts
+            }, 5 * 60 * 1000);
             return;
         }
 
