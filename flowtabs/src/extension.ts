@@ -67,13 +67,17 @@ function handleSelectionChange(e: any, browserManager: any, wsClient: WebSocket 
     }
 }
 
-
 // Main extension activation function
 export function activate(context: vscode.ExtensionContext): void {
     const wss = new WebSocket.Server({ port: Number(WEBSOCKET_PORT) });
     let wsClient: WebSocket | null = null;
 
-    const browserManager = OSFactory.getOSManager();
+    // Get browser type from configuration
+    const config = vscode.workspace.getConfiguration('flowtabs');
+    const browserType = config.get<string>('browserType') ?? 'chrome';
+
+
+    let browserManager = OSFactory.getOSManager(browserType);
     const windowManager = new WindowsWindowManager();
     const tabScoreCalculator = new TabScoreCalculator([]);
     

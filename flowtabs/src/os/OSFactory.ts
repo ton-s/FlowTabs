@@ -15,9 +15,9 @@ import WindowsOSManager from './windows/WindowsOSManager';
  */
 class OSFactory {
 
-    static getOSManager(): OSManager {
+    static getOSManager(browserType :string): OSManager {
         if (process.platform === 'win32') {
-            return new WindowsOSManager();
+            return new WindowsOSManager(browserType);
         } else {
             throw new Error('Unsupported OS');
         }

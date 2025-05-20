@@ -13,7 +13,7 @@ class WindowsWindowManager implements WindowManagerInterface {
     protected windows: Window[] = [];
     private lastWindow: number = 0;
 
-    private readonly excludedProcesses: Set<string> = new Set(['chrome', 'code']);
+    private readonly excludedProcesses: Set<string> = new Set(['chrome', 'code', 'brave']);
 
 
     getWindows(): Window[] {

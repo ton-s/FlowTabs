@@ -17,7 +17,17 @@ import FileSystemUtils from "../../utils";
 
 class WindowsOSManager extends OSManager {
     private readonly nircmdPath = path.join(__dirname, '../../..', 'resources', 'windowsOS', 'nircmd.exe');
-    private readonly navigator : string = 'chrome';
+    private readonly navigator : string;
+
+    /**
+     * Constructor for WindowsOSManager.
+     * 
+     * @param {string} browserType - The type of browser to be managed (e.g., 'chrome', 'firefox').
+     */
+    constructor(browserType: string) {
+        super();
+        this.navigator = browserType;
+    }
     
     /**
      * Checks whether the browser is currently running.

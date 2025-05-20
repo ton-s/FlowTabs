@@ -87,6 +87,25 @@ class WebSocketManager {
 
 
 /**
+ * Detects the browser type.
+ * @returns {string} - The browser type (e.g., "chrome", "brave").
+ */
+function detectBrowser() {
+    const userAgent = navigator.userAgent.toLowerCase();
+    if (navigator.brave) {
+        return "brave";
+    } else if (userAgent.includes("chrome")) {
+        return "chrome";
+    } else if (userAgent.includes("edg")) {
+        return "msedge";
+    } else {
+        return "unknown";
+    }
+}
+
+
+
+/**
  * Manage access history and tab usage frequency
  * in the Chrome browser. Interacts with a WebSocket to send
  * data to a VSCode extension.
@@ -194,7 +213,7 @@ class TabManager {
             icon: tab.favIconUrl,
             lastAccessed: this.tabHistory[tab.id].lastAccessed,
             frequency: this.tabHistory[tab.id].frequency,
-            browser: "chrome",
+            browser: detectBrowser(),
         }));
 
         this.webSocketManager.send({ tabs: tabInfo });

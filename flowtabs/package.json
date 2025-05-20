@@ -14,7 +14,18 @@
   "contributes": {
     "configuration": {
       "title": "FlowTabs",
-      "properties": {}
+      "properties": {
+        "flowtabs.browserType": {
+          "type": "string",
+          "default": "chrome",
+          "enum": [
+            "chrome",
+            "brave",
+            "msedge"
+          ],
+          "description": "The browser type to use for tab management (restart required)."
+        }
+      }
     },
     "commands": [
       {
